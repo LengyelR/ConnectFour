@@ -11,46 +11,39 @@ class Game:
         self.board = np.zeros((self.rows, self.columns)).astype(int)
 
     def place(self, column):
+        """
+        Returns the final position of the player's piece (i.e. where it landed)
+        """
         self.move_count += 1
         self.current_player = 2 if self.current_player == 1 else 1
 
         for row in range(self.rows):
             if self.board[row][column] == 0:  # found an empty cell
                 self.board[row][column] = self.current_player
-
-                if self.has_current_player_won(row, column):
-                    print()
-                    print(f'player {self.current_player} has won. move ({column})')
-                    print(self.board)
-                    print('-' * 16)
-                    return self.current_player
-
-                break
+                return row, column
         else:
             self.move_count -= 1
             self.current_player = 2 if self.current_player == 1 else 1
             raise ValueError(f'Column ({column}) is full')
 
-        # has not won, but was last move --> draw
-        if self.move_count == self.columns * self.rows:
-            print()
-            print(f'draw')
-            print(self.board)
-            print('-' * 16)
-            return 0
-
-    def has_current_player_won(self, row_idx, col_idx):
+    def is_game_over(self, row_idx, col_idx):
+        """
+        :param row_idx: position of last piece
+        :param col_idx: position of last piece
+        If game has ended it returns the winner's id (self.current_player) or 0 if it's a draw,
+        otherwise it returns None
+        """
         row = self.board[row_idx]
         column = self.board[:, col_idx]
 
         def _check_col(height, depth=0):
             if depth == 4:
-                return True
+                return self.current_player
 
             if column[height] == self.current_player:
                 return _check_col(height - 1, depth + 1)
             else:
-                return False
+                return None
 
         def _check_row():
             counter = 0
@@ -60,8 +53,8 @@ class Game:
                 else:
                     counter += 1
                     if counter == 4:
-                        return True
-            return False
+                        return self.current_player
+            return None
 
         def _check_anti_diag(r, c):
             # go to left upper side
@@ -77,11 +70,11 @@ class Game:
                 else:
                     counter += 1
                     if counter == 4:
-                        return True
+                        return self.current_player
                 r += 1
                 c += 1
 
-            return False
+            return None
 
         def _check_main_diag(r, c):
             # go to right upper side
@@ -97,16 +90,19 @@ class Game:
                 else:
                     counter += 1
                     if counter == 4:
-                        return True
+                        return self.current_player
                 r += 1
                 c -= 1
 
-            return False
+            return None
+
+        if self.move_count == 42:
+            return 0
 
         return _check_col(row_idx)\
                or _check_row() \
                or _check_anti_diag(row_idx, col_idx) \
-               or _check_main_diag(row_idx,col_idx)
+               or _check_main_diag(row_idx, col_idx)
 
 
 def example_games():
@@ -147,11 +143,22 @@ def example_games():
 
 if __name__ == "__main__":
     import random
-    for _ in range(10):
+    import time
+    from collections import Counter
+
+    results = []
+
+    start = time.time()
+    for _ in range(1000):
         new_game = Game()
         state = None
         while state is None:
             try:
-                state = new_game.place(random.randint(0, 6))
+                col = random.randint(0, 6)
+                r, c = new_game.place(col)
+                state = new_game.is_game_over(r, c)
             except ValueError:
                 pass
+        results.append(state)
+    print(time.time()-start, 's')
+    print(Counter(results))
