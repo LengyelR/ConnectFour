@@ -1,46 +1,64 @@
 import numpy as np
+import copy
 
 
-class Game:
+class GameEngine:
     def __init__(self):
         self.columns = 7
         self.rows = 6
-        self.current_player = 2
         self.move_count = 0
 
-        self.board = np.zeros((self.rows, self.columns)).astype(int)
+    def empty_board(self):
+        return np.zeros((self.rows, self.columns)).astype(int)
 
-    def place(self, column):
-        """
-        Returns the final position of the player's piece (i.e. where it landed)
-        """
-        self.move_count += 1
-        self.current_player = 2 if self.current_player == 1 else 1
+    def move(self, action, state, player):
+        # todo: maybe not all the time...?
+        state = copy.copy(state)
 
         for row in range(self.rows):
-            if self.board[row][column] == 0:  # found an empty cell
-                self.board[row][column] = self.current_player
-                return row, column
+            if state[row][action] == 0:  # found an empty cell
+                state[row][action] = player
+                self.move_count += 1
+                return row, action, state
         else:
-            self.move_count -= 1
-            self.current_player = 2 if self.current_player == 1 else 1
-            raise ValueError(f'Column ({column}) is full')
+            return None, None, None
 
-    def is_game_over(self, row_idx, col_idx):
+    def do_random_move(self, state, player):
         """
-        :param row_idx: position of last piece
-        :param col_idx: position of last piece
-        If game has ended it returns the winner's id (self.current_player) or 0 if it's a draw,
-        otherwise it returns None
+        :param state: board as numpy mtx
+            state[0] is the bottom of the board
+            state[self.rows-1] is the top of the board
+        :param player: current player (1 or 2)
+        :return: row, column, the new state, the executed move
         """
-        row = self.board[row_idx]
-        column = self.board[:, col_idx]
+        possible_moves = np.where(state[self.rows-1] == 0)[0]
+        if len(possible_moves) == 0:
+            return None, None, None, None
+
+        move = np.random.choice(possible_moves)
+        r, c, s = self.move(move, state, player)
+        return r, c, s, move
+
+    def is_game_over(self, row_idx, col_idx, state, current_player):
+        """
+         :param row_idx: position of last piece
+         :param col_idx: position of last piece
+         :param state: board as numpy mtx
+            state[0] is the bottom of the board
+            state[self.rows-1] is the top of the board
+         :param current_player: current player (1 or 2)
+
+         If the game has ended it returns the winner's id (current_player) or 0 if it's a draw,
+         otherwise it returns None
+         """
+        row = state[row_idx]
+        column = state[:, col_idx]
 
         def _check_col(height, depth=0):
             if depth == 4:
-                return self.current_player
+                return current_player
 
-            if column[height] == self.current_player:
+            if column[height] == current_player:
                 return _check_col(height - 1, depth + 1)
             else:
                 return None
@@ -48,12 +66,12 @@ class Game:
         def _check_row():
             counter = 0
             for cell in row:
-                if cell != self.current_player:
+                if cell != current_player:
                     counter = 0
                 else:
                     counter += 1
                     if counter == 4:
-                        return self.current_player
+                        return current_player
             return None
 
         def _check_anti_diag(r, c):
@@ -65,12 +83,12 @@ class Game:
             # descend and count
             counter = 0
             while r != (self.rows - 1) and c != (self.columns - 1):
-                if self.board[r, c] != self.current_player:
+                if state[r, c] != current_player:
                     counter = 0
                 else:
                     counter += 1
                     if counter == 4:
-                        return self.current_player
+                        return current_player
                 r += 1
                 c += 1
 
@@ -85,17 +103,18 @@ class Game:
             # descend and count
             counter = 0
             while r != (self.rows - 1) and c != 0:
-                if self.board[r, c] != self.current_player:
+                if state[r, c] != current_player:
                     counter = 0
                 else:
                     counter += 1
                     if counter == 4:
-                        return self.current_player
+                        return current_player
                 r += 1
                 c -= 1
 
             return None
 
+        # todo: user needs to be very careful...
         if self.move_count == 42:
             return 0
 
@@ -105,44 +124,46 @@ class Game:
                or _check_main_diag(row_idx, col_idx)
 
 
-def example_games():
-    game = Game()
+def _example_games():
+    game = GameEngine()
+    board = game.empty_board()
     for _ in range(3):
-        game.place(1)
-        game.place(2)
-    game.place(1)
+        _, _, board = game.move(1, board, 1)
+        _, _, board = game.move(2, board, 2)
+    _, _, board = game.move(1, board, 1)
 
-    game2 = Game()
-    game2.place(0)
-    game2.place(1)
-    game2.place(0)
-    game2.place(2)
-    game2.place(0)
-    game2.place(3)
-    game2.place(1)
-    game2.place(4)
+    game2 = GameEngine()
+    board = game.empty_board()
+    _, _, board = game2.move(0, board, 1)
+    _, _, board = game2.move(1, board, 2)
+    _, _, board = game2.move(0, board, 1)
+    _, _, board = game2.move(2, board, 2)
+    _, _, board = game2.move(0, board, 1)
+    _, _, board = game2.move(3, board, 2)
+    _, _, board = game2.move(1, board, 1)
+    _, _, board = game2.move(4, board, 2)
 
-    game3 = Game()
-    game3.place(0)
-    game3.place(1)
+    game3 = GameEngine()
+    board = game.empty_board()
+    _, _, board = game3.move(0, board, 1)
+    _, _, board = game3.move(1, board, 2)
 
-    game3.place(1)
-    game3.place(2)
+    _, _, board = game3.move(1, board, 1)
+    _, _, board = game3.move(2, board, 2)
 
-    game3.place(3)
-    game3.place(2)
+    _, _, board = game3.move(3, board, 1)
+    _, _, board = game3.move(2, board, 2)
 
-    game3.place(2)
-    game3.place(3)
+    _, _, board = game3.move(2, board, 1)
+    _, _, board = game3.move(3, board, 2)
 
-    game3.place(4)
-    game3.place(3)
+    _, _, board = game3.move(4, board, 1)
+    _, _, board = game3.move(3, board, 2)
 
-    game3.place(3)
+    _, _, board = game3.move(3, board, 1)
 
 
-if __name__ == "__main__":
-    import random
+def _test():
     import time
     from collections import Counter
 
@@ -150,15 +171,22 @@ if __name__ == "__main__":
 
     start = time.time()
     for _ in range(1000):
-        new_game = Game()
-        state = None
-        while state is None:
-            try:
-                col = random.randint(0, 6)
-                r, c = new_game.place(col)
-                state = new_game.is_game_over(r, c)
-            except ValueError:
-                pass
-        results.append(state)
-    print(time.time()-start, 's')
+        player = 2
+        engine = GameEngine()
+        state = engine.empty_board()
+        winner = None
+
+        while winner is None:
+            player = 3 - player
+            r, c, next_state, move = engine.do_random_move(state, player)
+            winner = engine.is_game_over(r, c, next_state, player)
+            state = next_state
+
+        results.append(winner)
+    print(time.time() - start, 's')
     print(Counter(results))
+
+
+if __name__ == "__main__":
+    _example_games()
+    _test()
