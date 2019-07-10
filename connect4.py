@@ -6,7 +6,6 @@ class GameEngine:
     def __init__(self):
         self.columns = 7
         self.rows = 6
-        self.move_count = 0
 
     def empty_board(self):
         return np.zeros((self.rows, self.columns)).astype(int)
@@ -18,10 +17,15 @@ class GameEngine:
         for row in range(self.rows):
             if state[row][action] == 0:  # found an empty cell
                 state[row][action] = player
-                self.move_count += 1
                 return row, action, state
         else:
             return None, None, None
+
+    def get_legal_moves(self, state):
+        return np.where(state[self.rows - 1] == 0)[0]
+
+    def illegal_moves_mask(self, state):
+        return state[self.rows - 1] != 0
 
     def do_random_move(self, state, player):
         """
@@ -31,7 +35,7 @@ class GameEngine:
         :param player: current player (1 or 2)
         :return: row, column, the new state, the executed move
         """
-        possible_moves = np.where(state[self.rows-1] == 0)[0]
+        possible_moves = self.get_legal_moves(state)
         if len(possible_moves) == 0:
             return None, None, None, None
 
@@ -39,7 +43,7 @@ class GameEngine:
         r, c, s = self.move(move, state, player)
         return r, c, s, move
 
-    def is_game_over(self, row_idx, col_idx, state, current_player):
+    def has_player_won(self, row_idx, col_idx, state, current_player):
         """
          :param row_idx: position of last piece
          :param col_idx: position of last piece
@@ -48,8 +52,8 @@ class GameEngine:
             state[self.rows-1] is the top of the board
          :param current_player: current player (1 or 2)
 
-         If the game has ended it returns the winner's id (current_player) or 0 if it's a draw,
-         otherwise it returns None
+         if a player won, it returns the winner's id (current_player),
+         otherwise it returns None (even when it's a draw)
          """
         row = state[row_idx]
         column = state[:, col_idx]
@@ -114,10 +118,6 @@ class GameEngine:
 
             return None
 
-        # todo: user needs to be very careful...
-        if self.move_count == 42:
-            return 0
-
         return _check_col(row_idx)\
                or _check_row() \
                or _check_anti_diag(row_idx, col_idx) \
@@ -179,7 +179,9 @@ def _test():
         while winner is None:
             player = 3 - player
             r, c, next_state, move = engine.do_random_move(state, player)
-            winner = engine.is_game_over(r, c, next_state, player)
+            winner = engine.has_player_won(r, c, next_state, player)
+            if winner is None and np.count_nonzero(next_state) == engine.rows*engine.columns:
+                winner = 0
             state = next_state
 
         results.append(winner)
