@@ -116,7 +116,11 @@ class Mcts:
             node = root
 
             leaf = node.select()
-            p, v = self.net.predict(network.to_network_state(leaf.state))
+            #p, v = self.net.predict(network.to_network_state(leaf.state))
+            rand = np.random.uniform(0, 1, size=(1, 7))
+            p = rand / np.linalg.norm(rand)
+            v = np.random.uniform(-1, 1, size=(1, 1))
+
             leaf.expand(self.game_engine, leaf.state, p)
             leaf.backup(v)
 
