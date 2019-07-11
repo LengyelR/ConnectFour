@@ -1,6 +1,8 @@
 import tensorflow as tf
 import numpy as np
 
+WEIGHT_PATH = r'./random_wights.h5'
+
 
 class ConvolutionalBlock:
     def __init__(self):
@@ -128,6 +130,11 @@ class Con4Zero:
         return _loss
 
 
+def to_network_state(state):
+    #todo: transform...
+    return np.random.randn(1, 32, 32, 1)
+
+
 if __name__ == "__main__":
     INPUT_SHAPE = (32, 32, 1)
     TRAIN = 500
@@ -148,6 +155,8 @@ if __name__ == "__main__":
 
     creator = Con4Zero(INPUT_SHAPE, ResidualBlock)
     neural = creator()
+    neural.save_weights(WEIGHT_PATH)
+
     run_model(neural)
 
     neural.compile(
