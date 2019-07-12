@@ -25,10 +25,21 @@ class Node:
     def max_puct_node(self):
         return max(self.children, key=lambda node: node.Q + node.U if node is not None else 0)
 
-    def best_move(self):
-        # no exploration
-        n = max(self.children, key=lambda node: node.N)
-        return n.action
+    def best_move(self, tau):
+        # fairly ugly... fill in illegal move nodes with zeros
+        legal_moves, visits = set(), []
+        for node in self.children:
+            legal_moves.add(node.action)
+            visits.append(node.N)
+
+        for move in range(7):
+            if move not in legal_moves:
+                visits.insert(move, 0)
+
+        visits = np.asarray(visits)**(1/tau)
+        pi = visits / visits.sum()
+        a = np.random.choice(7, p=pi)
+        return a
 
     @property
     def U(self):
@@ -91,8 +102,7 @@ class Node:
         turn = 1
         while curr is not None:
             curr.N += 1
-            new_value = v * turn
-            curr.W += new_value
+            curr.W += (v * turn)
 
             curr = curr.parent
             turn *= -1
@@ -107,16 +117,17 @@ class Mcts:
         self.net = net
         self.game_engine = game_engine
 
-    def search(self, board_state, player):
+    def search(self, board_state, player, tau=0.01):
         # create root (next level starts the game, so root should be the other player)
         root = Node(0, 0, board_state, 3-player)
         root.depth = np.count_nonzero(board_state)
+        root.N = -1  # root counted twice...
 
         for _ in range(self.iter_count):
             node = root
 
             leaf = node.select()
-            #p, v = self.net.predict(network.to_network_state(leaf.state))
+            # p, v = self.net.predict(network.to_network_state(leaf.state))
             rand = np.random.uniform(0, 1, size=(1, 7))
             p = rand / np.linalg.norm(rand)
             v = np.random.uniform(-1, 1, size=(1, 1))
@@ -124,23 +135,24 @@ class Mcts:
             leaf.expand(self.game_engine, leaf.state, p)
             leaf.backup(v)
 
-        return root.best_move()
+        return root.best_move(tau)
 
 
 def main():
     from collections import Counter
+    import datetime
 
     engine = connect4.GameEngine()
     creator = network.Con4Zero((32, 32, 1), network.ResidualBlock)
     model = creator()
     model.load_weights(network.WEIGHT_PATH)
-    mcts = Mcts(2000, model, engine)
+    mcts = Mcts(400, model, engine)
 
     end_results = []
 
     def step(s, player, use_mcts=True, log=False):
         if use_mcts:
-            a = mcts.search(s, player)
+            a = mcts.search(s, player, 0.01)
             r, c, s = engine.move(a, s, player)
         else:
             r, c, s, a = engine.do_random_move(s, player)
@@ -164,9 +176,9 @@ def main():
         while winner is None:
             winner, state = step(state, 1, use_mcts=True, log=False)
             if winner is None:
-                winner, state = step(state, 2, use_mcts=False, log=False)
-        print(f'({i}) game over: {winner}')
-        print('-'*18)
+                winner, state = step(state, 2, use_mcts=True, log=False)
+        print(f'{datetime.datetime.now()}: ({i}) game over: {winner}')
+        print('-'*42)
 
     print(Counter(end_results))
 
