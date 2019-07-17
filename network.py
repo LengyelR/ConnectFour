@@ -1,12 +1,13 @@
 import tensorflow as tf
 import numpy as np
+np.set_printoptions(edgeitems=12, linewidth=120)
 
-WEIGHT_PATH = r'./random_wights.h5'
+WEIGHT_PATH = r'./random_weights.h5'
 
 
 class ConvolutionalBlock:
     def __init__(self):
-        self.conv = tf.keras.layers.Conv2D(64, (3, 3), padding='same')
+        self.conv = tf.keras.layers.Conv2D(32, (3, 3), padding='same')
         self.bn = tf.keras.layers.BatchNormalization()
         self.relu = tf.keras.layers.Activation('relu')
 
@@ -19,9 +20,12 @@ class ConvolutionalBlock:
 
 class ResidualBlock:
     def __init__(self):
-        self.conv = tf.keras.layers.Conv2D(64, (3, 3), padding='same')
+        self.conv = tf.keras.layers.Conv2D(32, (3, 3), padding='same')
         self.bn = tf.keras.layers.BatchNormalization()
         self.relu = tf.keras.layers.Activation('relu')
+        # without wrapping the addition in a lambda layer, we cannot save the keras model...
+        # passing 2 params isn't possible, we must use a tuple...
+        self.add = tf.keras.layers.Lambda(lambda ab_tuple: ab_tuple[0] + ab_tuple[1])
 
     def __call__(self, x):
         residual = x
@@ -34,8 +38,7 @@ class ResidualBlock:
         out = self.bn(out)
         out = self.relu(out)
 
-        out = out + residual
-
+        out = self.add((out, residual))
         out = self.relu(out)
         return out
 
@@ -47,7 +50,7 @@ class PolicyHead:
         self.conv = tf.keras.layers.Conv2D(2, (1, 1), padding='same')
         self.fc = tf.keras.layers.Dense(7)   # column size of the board (i.e. moves)
         self.relu = tf.keras.layers.Activation('relu')
-        self.softmax = tf.keras.layers.Activation('softmax')
+        self.softmax = tf.keras.layers.Activation('softmax', name="policy_head")
 
     def __call__(self, x):
         x = self.conv(x)
@@ -64,11 +67,10 @@ class ValueHead:
         self.flatten = tf.keras.layers.Flatten()
         self.bn = tf.keras.layers.BatchNormalization()
         self.relu = tf.keras.layers.Activation('relu')
-        self.tanh = tf.keras.layers.Activation('tanh')
         self.fc1 = tf.keras.layers.Dense(256)
         self.fc2 = tf.keras.layers.Dense(1)
         self.conv = tf.keras.layers.Conv2D(1, (1, 1), padding='same')
-        self.softmax = tf.keras.layers.Activation('softmax')
+        self.tanh = tf.keras.layers.Activation('tanh', name='value_head')
 
     def __call__(self, x):
         x = self.conv(x)
@@ -97,7 +99,7 @@ class Con4Zero:
         return x
 
     def __call__(self):
-        board = tf.keras.layers.Input(shape=self.input_shape)
+        board = tf.keras.layers.Input(shape=self.input_shape, name="board_state_input_node")
 
         x = self.conv(board)
         x = self._residual_tower(x, 2)  # todo: higher tower
@@ -131,7 +133,7 @@ class Con4Zero:
 
 
 def to_network_state(state):
-    #todo: transform...
+    # todo: transform...
     return np.random.randn(1, 32, 32, 1)
 
 
