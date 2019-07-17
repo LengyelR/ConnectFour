@@ -3,11 +3,12 @@ import numpy as np
 np.set_printoptions(edgeitems=12, linewidth=120)
 
 WEIGHT_PATH = r'./random_weights.h5'
+INPUT_SHAPE = (42, 4, 1)
 
 
 class ConvolutionalBlock:
-    def __init__(self):
-        self.conv = tf.keras.layers.Conv2D(32, (3, 3), padding='same')
+    def __init__(self, reg):
+        self.conv = tf.keras.layers.Conv2D(64, (3, 3), padding='same', kernel_regularizer=reg)
         self.bn = tf.keras.layers.BatchNormalization()
         self.relu = tf.keras.layers.Activation('relu')
 
@@ -19,8 +20,8 @@ class ConvolutionalBlock:
 
 
 class ResidualBlock:
-    def __init__(self):
-        self.conv = tf.keras.layers.Conv2D(32, (3, 3), padding='same')
+    def __init__(self, reg):
+        self.conv = tf.keras.layers.Conv2D(64, (3, 3), padding='same', kernel_regularizer=reg)
         self.bn = tf.keras.layers.BatchNormalization()
         self.relu = tf.keras.layers.Activation('relu')
         # without wrapping the addition in a lambda layer, we cannot save the keras model...
@@ -44,11 +45,11 @@ class ResidualBlock:
 
 
 class PolicyHead:
-    def __init__(self):
+    def __init__(self, reg):
         self.flatten = tf.keras.layers.Flatten()
         self.bn = tf.keras.layers.BatchNormalization()
-        self.conv = tf.keras.layers.Conv2D(2, (1, 1), padding='same')
-        self.fc = tf.keras.layers.Dense(7)   # column size of the board (i.e. moves)
+        self.conv = tf.keras.layers.Conv2D(2, (1, 1), padding='same', kernel_regularizer=reg)
+        self.fc = tf.keras.layers.Dense(7, kernel_regularizer=reg)   # column size of the board (i.e. moves)
         self.relu = tf.keras.layers.Activation('relu')
         self.softmax = tf.keras.layers.Activation('softmax', name="policy_head")
 
@@ -63,13 +64,13 @@ class PolicyHead:
 
 
 class ValueHead:
-    def __init__(self):
+    def __init__(self, reg):
         self.flatten = tf.keras.layers.Flatten()
         self.bn = tf.keras.layers.BatchNormalization()
         self.relu = tf.keras.layers.Activation('relu')
-        self.fc1 = tf.keras.layers.Dense(256)
-        self.fc2 = tf.keras.layers.Dense(1)
-        self.conv = tf.keras.layers.Conv2D(1, (1, 1), padding='same')
+        self.fc1 = tf.keras.layers.Dense(256, kernel_regularizer=reg)
+        self.fc2 = tf.keras.layers.Dense(1, kernel_regularizer=reg)
+        self.conv = tf.keras.layers.Conv2D(1, (1, 1), padding='same', kernel_regularizer=reg)
         self.tanh = tf.keras.layers.Activation('tanh', name='value_head')
 
     def __call__(self, x):
@@ -87,10 +88,12 @@ class ValueHead:
 
 class Con4Zero:
     def __init__(self, input_shape, res_block):
-        self.block = res_block()
-        self.policy_head = PolicyHead()
-        self.value_head = ValueHead()
-        self.conv = ConvolutionalBlock()
+        l2 = tf.keras.regularizers.l2(0.01)
+
+        self.block = res_block(l2)
+        self.policy_head = PolicyHead(l2)
+        self.value_head = ValueHead(l2)
+        self.conv = ConvolutionalBlock(l2)
         self.input_shape = input_shape
 
     def _residual_tower(self, x, n):
@@ -99,7 +102,7 @@ class Con4Zero:
         return x
 
     def __call__(self):
-        board = tf.keras.layers.Input(shape=self.input_shape, name="board_state_input_node")
+        board = tf.keras.layers.Input(shape=self.input_shape, name="board_state_input")
 
         x = self.conv(board)
         x = self._residual_tower(x, 2)  # todo: higher tower
@@ -138,7 +141,6 @@ def to_network_state(state):
 
 
 if __name__ == "__main__":
-    INPUT_SHAPE = (32, 32, 1)
     TRAIN = 500
     TEST = 100
 
@@ -163,7 +165,7 @@ if __name__ == "__main__":
 
     neural.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3, ),
-        loss=Con4Zero.loss(),  # todo: pass weights?
+        loss=Con4Zero.loss(),
         metrics=[Con4Zero.loss()]
     )
 
