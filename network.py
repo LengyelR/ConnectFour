@@ -137,7 +137,7 @@ class Con4Zero:
 
 def to_network_state(state):
     # todo: transform...
-    return np.random.randn(1, 32, 32, 1)
+    return np.random.randn(1, *INPUT_SHAPE)
 
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@ import math
 import numpy as np
 import network
 import connect4
+import inference
 
 np.set_printoptions(edgeitems=12, linewidth=120)
 C_PUCT = 5
@@ -127,11 +128,7 @@ class Mcts:
             node = root
 
             leaf = node.select()
-            # p, v = self.net.predict(network.to_network_state(leaf.state))
-            rand = np.random.uniform(0, 1, size=(1, 7))
-            p = rand / np.linalg.norm(rand)
-            v = np.random.uniform(-1, 1, size=(1, 1))
-
+            p, v = self.net.predict(network.to_network_state(leaf.state))
             leaf.expand(self.game_engine, leaf.state, p)
             leaf.backup(v)
 
@@ -141,11 +138,10 @@ class Mcts:
 def main():
     from collections import Counter
     import datetime
+    import os
 
     engine = connect4.GameEngine()
-    creator = network.Con4Zero((32, 32, 1), network.ResidualBlock)
-    model = creator()
-    model.load_weights(network.WEIGHT_PATH)
+    model = inference.FrozenModel(os.path.join('model', 'frozen_model.pb'))
     mcts = Mcts(400, model, engine)
 
     end_results = []

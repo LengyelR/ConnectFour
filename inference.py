@@ -54,14 +54,14 @@ class FrozenModel:
         self.policy = self.sess.graph.get_tensor_by_name('policy_head/Softmax:0')
         self.value = self.sess.graph.get_tensor_by_name('value_head/Tanh:0')
 
-    def run(self, state):
+    def predict(self, state):
         res = self.sess.run([self.policy, self.value], feed_dict={self.state: state})
         return res
 
 
 if __name__ == "__main__":
     import os
-    import time
+    import timeit
     import numpy as np
 
     def _mkdir(*folder):
@@ -71,7 +71,6 @@ if __name__ == "__main__":
             os.makedirs(path)
         return path
 
-
     tf_path = _mkdir('model', 'tf')
     keras_path = os.path.join('model', 'keras_model.h5')
     model_path = os.path.join('model', 'frozen_model.pb')
@@ -79,17 +78,24 @@ if __name__ == "__main__":
     save(network.WEIGHT_PATH, keras_path, tf_path, model_path)
     model = FrozenModel(model_path)
 
-    for _ in range(10):
-        s = np.random.randn(1, *network.INPUT_SHAPE)
-        start = time.time()
-        p, v = model.run(s)
-        print(time.time()-start, p, v)
-
-    print('-'*64)
     nn = network.Con4Zero(network.INPUT_SHAPE, network.ResidualBlock)()
     nn.load_weights(network.WEIGHT_PATH)
-    for _ in range(10):
-        s = np.random.randn(1, *network.INPUT_SHAPE)
-        start = time.time()
-        p, v = nn.predict(s)
-        print(time.time()-start, p, v)
+
+    def frozen_predict(s):
+        def _predict():
+            model.predict(s)
+        return _predict
+
+    def nn_predict(s):
+        def _predict():
+            nn.predict(s)
+        return _predict
+
+    def get_args():
+        return np.random.randn(1, 42, 4, 1)
+
+    t = timeit.Timer(frozen_predict(get_args()))
+    print('frozen:', t.timeit(1600))
+
+    t = timeit.Timer(nn_predict(get_args()))
+    print('nn:', t.timeit(1600))
