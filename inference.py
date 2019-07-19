@@ -62,6 +62,7 @@ class FrozenModel:
 if __name__ == "__main__":
     import os
     import timeit
+    import functools
     import numpy as np
 
     def _mkdir(*folder):
@@ -81,21 +82,11 @@ if __name__ == "__main__":
     nn = network.Con4Zero(network.INPUT_SHAPE, network.ResidualBlock)()
     nn.load_weights(network.WEIGHT_PATH)
 
-    def frozen_predict(s):
-        def _predict():
-            model.predict(s)
-        return _predict
-
-    def nn_predict(s):
-        def _predict():
-            nn.predict(s)
-        return _predict
-
     def get_args():
         return np.random.randn(1, 42, 4, 1)
 
-    t = timeit.Timer(frozen_predict(get_args()))
+    t = timeit.Timer(functools.partial(model.predict, get_args()))
     print('frozen:', t.timeit(1600))
 
-    t = timeit.Timer(nn_predict(get_args()))
+    t = timeit.Timer(functools.partial(nn.predict, get_args()))
     print('nn:', t.timeit(1600))
