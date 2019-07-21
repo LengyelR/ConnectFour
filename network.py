@@ -2,8 +2,7 @@ import tensorflow as tf
 import numpy as np
 np.set_printoptions(edgeitems=12, linewidth=120)
 
-WEIGHT_PATH = r'./random_weights.h5'
-INPUT_SHAPE = (42, 4, 1)
+INPUT_SHAPE = (6, 7, 1)
 
 
 class ConvolutionalBlock:
@@ -159,7 +158,6 @@ if __name__ == "__main__":
 
     creator = Con4Zero(INPUT_SHAPE, ResidualBlock)
     neural = creator()
-    neural.save_weights(WEIGHT_PATH)
 
     run_model(neural)
 
