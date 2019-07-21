@@ -26,21 +26,22 @@ class Node:
     def max_puct_node(self):
         return max(self.children, key=lambda node: node.Q + node.U if node is not None else 0)
 
-    def best_move(self, tau):
-        # fairly ugly... fill in illegal move nodes with zeros
-        legal_moves, visits = set(), []
+    def get_policy(self, tau):
+        # fairly ugly... fill in the "missing" illegal moves ...
+        legal_moves, visits, q_values = set(), [], []
         for node in self.children:
             legal_moves.add(node.action)
             visits.append(node.N)
+            q_values.append(node.Q)
 
         for move in range(7):
             if move not in legal_moves:
                 visits.insert(move, 0)
+                q_values.insert(move, -1)
 
         visits = np.asarray(visits)**(1/tau)
         pi = visits / visits.sum()
-        a = np.random.choice(7, p=pi)
-        return a
+        return pi, q_values
 
     @property
     def U(self):
@@ -132,7 +133,7 @@ class Mcts:
             leaf.expand(self.game_engine, leaf.state, p)
             leaf.backup(v)
 
-        return root.best_move(tau)
+        return root.get_policy(tau)
 
 
 def main():
@@ -142,18 +143,21 @@ def main():
 
     engine = connect4.GameEngine()
     model = inference.FrozenModel(os.path.join('model', 'frozen_model.pb'))
-    mcts = Mcts(400, model, engine)
+    mcts = Mcts(800, model, engine)
 
     end_results = []
 
     def step(s, player, use_mcts=True, log=False):
         if use_mcts:
-            a = mcts.search(s, player, 0.01)
+            pi, q_values = mcts.search(s, player, 0.01)
+            a = np.random.choice(7, p=pi)
+            q = q_values[a]
             r, c, s = engine.move(a, s, player)
         else:
             r, c, s, a = engine.do_random_move(s, player)
+            q = None
         if log:
-            print(f'player{player} -> move:{a}')
+            print(f'player{player} -> move:{a}, q:{q}')
             print(s)
         end_result = engine.has_player_won(r, c, s, player)
         if end_result is not None:
@@ -172,7 +176,7 @@ def main():
         while winner is None:
             winner, state = step(state, 1, use_mcts=True, log=False)
             if winner is None:
-                winner, state = step(state, 2, use_mcts=True, log=False)
+                winner, state = step(state, 2, use_mcts=False, log=False)
         print(f'{datetime.datetime.now()}: ({i}) game over: {winner}')
         print('-'*42)
 
