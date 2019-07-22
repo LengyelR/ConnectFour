@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 np.set_printoptions(edgeitems=12, linewidth=120)
 
-INPUT_SHAPE = (6, 7, 1)
+INPUT_SHAPE = (2, 6, 7)
 
 
 class ConvolutionalBlock:
@@ -134,9 +134,16 @@ class Con4Zero:
         return _loss
 
 
-def to_network_state(state):
-    # todo: transform...
-    return np.random.randn(1, *INPUT_SHAPE)
+def to_network_feature_planes(board):
+    player1 = (board == 1).astype(int)
+    player2 = (board == 2).astype(int)
+    return np.asarray([[player1, player2]])
+
+
+def to_training_feature_planes(board):
+    player1 = (board == 1).astype(int)
+    player2 = (board == 2).astype(int)
+    return np.asarray([player1, player2])
 
 
 if __name__ == "__main__":
@@ -158,7 +165,6 @@ if __name__ == "__main__":
 
     creator = Con4Zero(INPUT_SHAPE, ResidualBlock)
     neural = creator()
-
     run_model(neural)
 
     neural.compile(
@@ -171,7 +177,7 @@ if __name__ == "__main__":
     train_shape = (TRAIN, ) + INPUT_SHAPE
     neural.fit(
         np.random.randn(*train_shape), create_data(TRAIN),
-        epochs=3,
+        epochs=5,
         steps_per_epoch=10,
         validation_data=(np.random.randn(*test_shape), create_data(TEST)),
         validation_freq=10

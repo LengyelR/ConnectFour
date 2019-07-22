@@ -129,7 +129,7 @@ class Mcts:
             node = root
 
             leaf = node.select()
-            p, v = self.net.predict(network.to_network_state(leaf.state))
+            p, v = self.net.predict(network.to_network_feature_planes(leaf.state))
             leaf.expand(self.game_engine, leaf.state, p)
             leaf.backup(v)
 
@@ -142,7 +142,7 @@ def main():
     import os
 
     engine = connect4.GameEngine()
-    model = inference.FrozenModel(os.path.join('model', 'frozen_model.pb'))
+    model = inference.FrozenModel(os.path.join('model', 'gen-0', 'frozen_model.pb'))
     mcts = Mcts(800, model, engine)
 
     end_results = []
@@ -174,7 +174,7 @@ def main():
         state = np.zeros((6, 7)).astype(int)
         winner = None
         while winner is None:
-            winner, state = step(state, 1, use_mcts=True, log=False)
+            winner, state = step(state, 1, use_mcts=True, log=True)
             if winner is None:
                 winner, state = step(state, 2, use_mcts=False, log=False)
         print(f'{datetime.datetime.now()}: ({i}) game over: {winner}')

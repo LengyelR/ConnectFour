@@ -16,15 +16,18 @@ logger.setLevel(logging.DEBUG)
 logger.addHandler(fh)
 
 
-def self_play(frozen_model_path, batches=10, n=100):
+def self_play(gen, batches=10, n=100):
     """
-    :param frozen_model_path: path to a *.pb file
+    :param gen: folder name of the generation (e.g. gen-4)
     :param batches: number of batches (each batch contains n games)
     :param n: number of games to play in a batch
     :return:
     """
+
+    frozen_model_path = os.path.join('model', gen, 'frozen_model.pb')
+
     guid = uuid.uuid4()
-    folder = os.path.join('training', str(guid))
+    folder = os.path.join('training', gen, str(guid))
     os.makedirs(folder)
 
     engine = connect4.GameEngine()
@@ -62,4 +65,4 @@ def self_play(frozen_model_path, batches=10, n=100):
 
 
 if __name__ == '__main__':
-    self_play(os.path.join('model', 'frozen_model.pb'), 5, 3)
+    self_play('gen-0', 5, 3)

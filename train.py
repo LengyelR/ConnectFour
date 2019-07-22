@@ -64,7 +64,7 @@ def _format_data(training_data):
         pi = step_data[1]
         q = step_data[2]
 
-        x_data.append(s.reshape(network.INPUT_SHAPE))
+        x_data.append(network.to_training_feature_planes(s))
         pi_arr.append(pi)
         q_arr.append(q)
 
@@ -83,7 +83,7 @@ def train(data, previous_network_weights):
     neural = creator()
     neural.load_weights(previous_network_weights)
     neural.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3, ),
+        optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4, ),
         loss=network.Con4Zero.loss(),
         metrics=[network.Con4Zero.loss()]
     )
@@ -99,18 +99,13 @@ def train(data, previous_network_weights):
     return neural
 
 
-def main(current_gen, previous_gen):
-    def _mkdir(*folder):
-        cwd = os.getcwd()
-        path = os.path.join(cwd, *folder)
-        if not os.path.exists(path):
-            os.makedirs(path)
-        return path
+def main(current_gen, new_gen):
+    import utils
 
-    model_folder_path = _mkdir('model', current_gen)
-    tf_folder_path = _mkdir('model', current_gen, 'tf')
+    model_folder_path = utils.mkdir('model', new_gen)
+    tf_folder_path = utils.mkdir('model', new_gen, 'tf')
 
-    prev_weights_path = os.path.join('model', previous_gen, 'weights.h5')
+    prev_weights_path = os.path.join('model', current_gen, 'weights.h5')
     weight_path = os.path.join(model_folder_path, 'weights.h5')
     keras_path = os.path.join(model_folder_path, 'keras_model.h5')
     frozen_path = os.path.join(model_folder_path, 'frozen_model.pb')
@@ -118,10 +113,10 @@ def main(current_gen, previous_gen):
 
     training_data = load_training_data(current_gen)
     trained_model = train(training_data, prev_weights_path)
-
     trained_model.save_weights(weight_path)
+
     save(weight_path, keras_path, tf_path, frozen_path)
 
 
 if __name__ == '__main__':
-    main('gen0', 'gen-1')
+    main('gen-0', 'gen-1')
