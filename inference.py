@@ -1,6 +1,10 @@
+import importlib
 import tensorflow as tf
 from tensorflow.python.platform import gfile
-from tensorflow.python.compiler.tensorrt import trt_convert as trt
+tensorRT_spec = importlib.util.find_spec("tensorflow.python.compiler.tensorrt")
+if tensorRT_spec is not None:
+    from tensorflow.python.compiler.tensorrt import trt_convert as trt
+
 import network
 
 
