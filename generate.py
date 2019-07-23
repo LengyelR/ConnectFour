@@ -44,10 +44,10 @@ def self_play(gen, batches=10, n=100):
             winner = None
             game_steps = []
             while winner is None:
-                pi, q_values = mcts.search(s, player, 0.01)
+                pi, children = mcts.search(s, player, 0.01)
                 a = np.random.choice(7, p=pi)
-                q = q_values[a]
-                game_steps.append((s, pi, q, player))
+                best_node = children[a]
+                game_steps.append((s, pi, best_node.Q, player))
 
                 r, c, s = engine.move(a, s, player)
                 winner = engine.has_player_won(r, c, s, player)
