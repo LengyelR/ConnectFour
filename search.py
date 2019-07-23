@@ -27,21 +27,26 @@ class Node:
         return max(self.children, key=lambda node: node.Q + node.U if node is not None else 0)
 
     def get_policy(self, tau):
+        """
+        This method modifies the graph! After this call: either retain the selected child node, or create a new tree.
+        :param tau: temperature parameter
+        :return: (pi, children)
+                 pi: probability distribution from the exponentiated visit counts,
+                 children: the children nodes
+        """
         # fairly ugly... fill in the "missing" illegal moves ...
-        legal_moves, visits, q_values = set(), [], []
+        legal_moves = set()
         for node in self.children:
             legal_moves.add(node.action)
-            visits.append(node.N)
-            q_values.append(node.Q)
 
         for move in range(7):
             if move not in legal_moves:
-                visits.insert(move, 0)
-                q_values.insert(move, -1)
+                self.children.insert(move, Node(0, -1,  None, -1))
 
+        visits = [node.N for node in self.children]
         visits = np.asarray(visits)**(1/tau)
         pi = visits / visits.sum()
-        return pi, q_values
+        return pi, self.children
 
     @property
     def U(self):
@@ -70,9 +75,9 @@ class Node:
 
         illegal_mask = engine.illegal_moves_mask(board_state)
         prior_probabilities[0][illegal_mask] = 0
-        norm = np.linalg.norm(prior_probabilities[0])
+        normed_priors = prior_probabilities[0] / sum(prior_probabilities[0])
 
-        for move, p in enumerate(prior_probabilities[0] / norm):
+        for move, p in enumerate(normed_priors):
             # illegal move
             if p < 1e-5:
                 continue
@@ -123,7 +128,6 @@ class Mcts:
         # create root (next level starts the game, so root should be the other player)
         root = Node(0, 0, board_state, 3-player)
         root.depth = np.count_nonzero(board_state)
-        root.N = -1  # root counted twice...
 
         for _ in range(self.iter_count):
             node = root
@@ -149,9 +153,10 @@ def main():
 
     def step(s, player, use_mcts=True, log=False):
         if use_mcts:
-            pi, q_values = mcts.search(s, player, 0.01)
+            pi, children = mcts.search(s, player, 0.01)
             a = np.random.choice(7, p=pi)
-            q = q_values[a]
+            best_node = children[a]
+            q = best_node.Q
             r, c, s = engine.move(a, s, player)
         else:
             r, c, s, a = engine.do_random_move(s, player)
