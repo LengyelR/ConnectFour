@@ -41,21 +41,21 @@ def self_play(gen, batches=10, n=100):
         for i in range(n):
             s = engine.empty_board()
             player = 1
-            winner = None
             game_steps = []
-            while winner is None:
+            while True:
                 pi, children = mcts.search(s, player, 0.01)
                 a = np.random.choice(7, p=pi)
                 best_node = children[a]
-                game_steps.append((s, pi, best_node.Q, player))
+                game_steps.append((s, pi, best_node.Q, best_node.player))
 
-                r, c, s = engine.move(a, s, player)
-                winner = engine.has_player_won(r, c, s, player)
+                if best_node.terminal is not None:
+                    break
 
-                if np.count_nonzero(s) == 42:
-                    winner = 0
+                s = best_node.state
                 player = 3 - player
             self_play_data.extend(game_steps)
+
+            winner = best_node.player if best_node.terminal == 1 else 0
             logger.debug(f'game{i} has been finished. Winner is {winner}')
         logger.debug(f'saving: {guid} -> {batch_no}')
         data_name = f'{batch_no}_self_play.pkl'
