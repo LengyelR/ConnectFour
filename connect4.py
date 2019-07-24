@@ -6,6 +6,8 @@ class GameEngine:
     def __init__(self):
         self.columns = 7
         self.rows = 6
+        self.red_x = '\x1b[31mx\x1b[0m'
+        self.blue_o = '\x1b[34mo\x1b[0m'
 
     def empty_board(self):
         return np.zeros((self.rows, self.columns)).astype(int)
@@ -123,6 +125,13 @@ class GameEngine:
                or _check_anti_diag(row_idx, col_idx) \
                or _check_main_diag(row_idx, col_idx)
 
+    def show_board(self, board):
+        for idx, row in enumerate(board[::-1]):
+            r = str(row)
+            print(r.replace('0', ' ')
+                  .replace('1', self.red_x)
+                  .replace('2', self.blue_o))
+
 
 def _example_games():
     game = GameEngine()
@@ -164,12 +173,10 @@ def _example_games():
 
 
 def _test():
-    import time
     from collections import Counter
 
     results = []
 
-    start = time.time()
     for _ in range(1000):
         player = 2
         engine = GameEngine()
@@ -185,10 +192,19 @@ def _test():
             state = next_state
 
         results.append(winner)
-    print(time.time() - start, 's')
+
+        print(winner)
+        engine.show_board(state)
+        print()
     print(Counter(results))
 
 
 if __name__ == "__main__":
+    import importlib
+    colorama_spec = importlib.util.find_spec("colorama")
+    if colorama_spec is not None:
+        from colorama import init
+        init()
+
     _example_games()
     _test()
