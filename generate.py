@@ -3,6 +3,7 @@ import os
 import uuid
 import pickle
 import logging
+import argparse
 
 import search
 import connect4
@@ -32,7 +33,7 @@ def self_play(gen, batches=10, n=100):
 
     engine = connect4.GameEngine()
     model = inference.FrozenModel(frozen_model_path)
-    mcts = search.Mcts(400, model, engine)
+    mcts = search.Mcts(800, model, engine)
 
     for batch_no in range(batches):
         self_play_data = []
@@ -58,11 +59,32 @@ def self_play(gen, batches=10, n=100):
             winner = best_node.player if best_node.terminal == 1 else 0
             logger.debug(f'game{i} has been finished. Winner is {winner}')
         logger.debug(f'saving: {guid} -> {batch_no}')
-        data_name = f'{batch_no}_self_play.pkl'
+        data_name = f'{batch_no}_{n}_self_play.pkl'
         full_path = os.path.join(folder, data_name)
         with open(full_path, 'wb') as f:
             pickle.dump(self_play_data, f, pickle.HIGHEST_PROTOCOL)
 
 
 if __name__ == '__main__':
-    self_play('gen-0', 5, 3)
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--batches', '-b',
+        type=int,
+        default=5,
+        help='Number of batches. Each batch of games will be saved separately.'
+    )
+    parser.add_argument(
+        '--batch_size', '-n',
+        type=int,
+        default=100,
+        help='The size of each batch. This many games will be played in a batch.'
+    )
+    parser.add_argument(
+        '--generation', '-g',
+        type=str,
+        default='gen-0',
+        help='Network generation to be used for self-play.'
+    )
+
+    flags, _ = parser.parse_known_args()
+    self_play(flags.generation, flags.batches, flags.batch_size)
