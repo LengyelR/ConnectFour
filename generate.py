@@ -17,9 +17,11 @@ logger.setLevel(logging.DEBUG)
 logger.addHandler(fh)
 
 
-def self_play(gen, batches=10, n=100):
+def self_play(gen, iteration, tau, batches=10, n=100):
     """
     :param gen: folder name of the generation (e.g. gen-4)
+    :param iteration: execute this many mcts iterations
+    :param tau: mcts parameter, controlling exploration
     :param batches: number of batches (each batch contains n games)
     :param n: number of games to play in a batch
     :return:
@@ -33,7 +35,7 @@ def self_play(gen, batches=10, n=100):
 
     engine = connect4.GameEngine()
     model = inference.FrozenModel(frozen_model_path)
-    mcts = search.Mcts(800, model, engine)
+    mcts = search.Mcts(iteration, model, engine)
 
     for batch_no in range(batches):
         self_play_data = []
@@ -44,7 +46,7 @@ def self_play(gen, batches=10, n=100):
             player = 1
             game_steps = []
             while True:
-                pi, children = mcts.search(s, player, 0.01)
+                pi, children = mcts.search(s, player, tau)
                 a = np.random.choice(7, p=pi)
                 best_node = children[a]
                 game_steps.append((s, pi, best_node.Q, best_node.player))
@@ -85,6 +87,22 @@ if __name__ == '__main__':
         default='gen-0',
         help='Network generation to be used for self-play.'
     )
+    parser.add_argument(
+        '--iter', '-i',
+        type=int,
+        default=800,
+        help='Mcts iteration step count.'
+    )
+    parser.add_argument(
+        '--tau', '-t',
+        type=float,
+        default=0.05,
+        help='Temperature parameter for the exponentiated visit counts.'
+    )
 
     flags, _ = parser.parse_known_args()
-    self_play(flags.generation, flags.batches, flags.batch_size)
+    self_play(flags.generation,
+              flags.iter,
+              flags.tau,
+              flags.batches,
+              flags.batch_size)
