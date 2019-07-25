@@ -140,6 +140,37 @@ class Mcts:
         return root.get_policy(tau)
 
 
+class MctsRnd:
+    """
+    Uses uniform random distribution instead of a neural network.
+    This class should be similar to a mcts guided by a gen-0 network, but faster with "pure" exploration.
+    """
+    def __init__(self, iter_count, game_engine):
+        self.iter_count = iter_count
+        self.game_engine = game_engine
+
+    def search(self, board_state, player, tau=0.01):
+        # create root (next level starts the game, so root should be the other player)
+        root = Node(0, 0, board_state, 3-player)
+        root.depth = np.count_nonzero(board_state)
+
+        for _ in range(self.iter_count):
+            node = root
+
+            leaf = node.select()
+
+            p = np.random.uniform(0, 1, 7)
+            p = p / p.sum()
+            p = np.asarray([p])
+
+            v = np.random.uniform(-1, 1, (1, 1, 1))
+
+            leaf.expand(self.game_engine, leaf.state, p)
+            leaf.backup(v)
+
+        return root.get_policy(tau)
+
+
 def main():
     from collections import Counter
     import datetime
@@ -163,7 +194,7 @@ def main():
             q = None
         if log:
             print(f'player{player} -> move:{a}, q:{q}')
-            print(s)
+            engine.show_board(s)
         end_result = engine.has_player_won(r, c, s, player)
         if end_result is not None:
             end_results.append(end_result)
