@@ -24,7 +24,7 @@ def init_generation_zero():
     frozen_path = os.path.join(model_folder_path, 'frozen_model.pb')
     tf_path = os.path.join(tf_folder_path, 'connect4')
 
-    creator = network.Con4Zero(network.INPUT_SHAPE, network.ResidualBlock)
+    creator = network.Con4Zero(network.INPUT_SHAPE)
     neural = creator()
     neural.save_weights(weight_path)
 

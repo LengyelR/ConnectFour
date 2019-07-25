@@ -84,7 +84,7 @@ if __name__ == "__main__":
     model = FrozenModel(model_path)
     rt_model = RTModel(model_path)
 
-    nn = network.Con4Zero(network.INPUT_SHAPE, network.ResidualBlock)()
+    nn = network.Con4Zero(network.INPUT_SHAPE)()
     nn.load_weights(weight_path)
 
     t = timeit.Timer(functools.partial(model.predict, get_args()))

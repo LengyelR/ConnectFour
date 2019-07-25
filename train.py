@@ -9,7 +9,7 @@ import network
 
 def _save_keras_model(weight_src, destination):
     tf.keras.backend.set_learning_phase(0)
-    creator = network.Con4Zero(network.INPUT_SHAPE, network.ResidualBlock)
+    creator = network.Con4Zero(network.INPUT_SHAPE)
     neural = creator()
     neural.load_weights(weight_src)
     tf.keras.models.save_model(neural, destination, overwrite=True)
@@ -79,7 +79,7 @@ def _format_data(training_data):
 def train(data, previous_network_weights):
     train_xs, train_ys, validate_xs, validate_ys = _format_data(data)
 
-    creator = network.Con4Zero(network.INPUT_SHAPE, network.ResidualBlock)
+    creator = network.Con4Zero(network.INPUT_SHAPE)
     neural = creator()
     neural.load_weights(previous_network_weights)
     neural.compile(
