@@ -76,10 +76,10 @@ if __name__ == "__main__":
 
     tf.reset_default_graph()
 
-    tf_path = os.path.join('model', 'gen0', 'tf')
-    weight_path = os.path.join('model', 'gen0', 'weights.h5')
-    keras_path = os.path.join('model', 'gen0', 'keras_model.h5')
-    model_path = os.path.join('model', 'gen0', 'frozen_model.pb')
+    tf_path = os.path.join('model', 'gen-0', 'tf')
+    weight_path = os.path.join('model', 'gen-0', 'weights.h5')
+    keras_path = os.path.join('model', 'gen-0', 'keras_model.h5')
+    model_path = os.path.join('model', 'gen-0', 'frozen_model.pb')
 
     model = FrozenModel(model_path)
     rt_model = RTModel(model_path)
