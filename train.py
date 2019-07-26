@@ -63,21 +63,20 @@ def _format_data(training_data):
         s = step_data[0]
         pi = step_data[1]
         q = step_data[2]
+        z = step_data[3]
+        avg = (q + z)/2
 
         x_data.append(network.to_training_feature_planes(s))
         pi_arr.append(pi)
-        q_arr.append(q)
+        q_arr.append(avg)
 
-    split = int(len(x_data) * 0.8)
-    xs = np.asarray(x_data[:split])
-    ys = [pi_arr[:split], q_arr[:split]]
-    v_xs = np.asarray(x_data[split:])
-    v_ys = [pi_arr[split:], q_arr[split:]]
-    return xs, ys, v_xs, v_ys
+    xs = np.asarray(x_data)
+    ys = [pi_arr, q_arr]
+    return xs, ys
 
 
 def train(data, previous_network_weights):
-    train_xs, train_ys, validate_xs, validate_ys = _format_data(data)
+    xs, ys = _format_data(data)
 
     creator = network.Con4Zero(network.INPUT_SHAPE)
     neural = creator()
@@ -89,11 +88,9 @@ def train(data, previous_network_weights):
     )
 
     neural.fit(
-        train_xs, train_ys,
-        epochs=1,
-        steps_per_epoch=5,
-        validation_data=(validate_xs, validate_ys),
-        validation_freq=5
+        xs, ys,
+        epochs=2,
+        steps_per_epoch=1000
     )
 
     return neural
@@ -119,4 +116,21 @@ def main(current_gen, new_gen):
 
 
 if __name__ == '__main__':
-    main('gen-0', 'gen-1')
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--prev_gen', '-pg',
+        type=str,
+        default='gen-0',
+        help='The model will be loaded and trained on this generation\'s data.'
+    )
+    parser.add_argument(
+        '--new_gen', '-ng',
+        type=str,
+        default='gen-1',
+        help='The new, next generation. After the training is finished, the model is saved here.'
+    )
+
+    flags, _ = parser.parse_known_args()
+    main(flags.prev_gen, flags.new_gen)
