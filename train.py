@@ -43,9 +43,9 @@ def save(weight_path, keras_model_path, tf_model_path, frozen_path):
     _freeze_graph(tf_model_path, frozen_path, ["policy_head/Softmax", "value_head/Tanh"])
 
 
-def load_training_data(generation):
+def load_training_data(folder, generation):
     data = []
-    search_pattern = os.path.join('training', generation, '**', '*.pkl')
+    search_pattern = os.path.join(folder, 'training', generation, '**', '*.pkl')
     for match in glob.iglob(search_pattern, recursive=True):
         with open(match, 'rb') as f:
             batch = pickle.load(f)
@@ -104,13 +104,13 @@ def main(folder, current_gen, new_gen):
     model_folder_path = utils.mkdir(root, new_gen)
     tf_folder_path = utils.mkdir(root, new_gen, 'tf')
 
-    prev_weights_path = os.path.join('model', current_gen, 'weights.h5')
+    prev_weights_path = os.path.join(root, current_gen, 'weights.h5')
     weight_path = os.path.join(model_folder_path, 'weights.h5')
     keras_path = os.path.join(model_folder_path, 'keras_model.h5')
     frozen_path = os.path.join(model_folder_path, 'frozen_model.pb')
     tf_path = os.path.join(tf_folder_path, 'connect4')
 
-    training_data = load_training_data(current_gen)
+    training_data = load_training_data(folder, current_gen)
     trained_model = train(training_data, prev_weights_path)
     trained_model.save_weights(weight_path)
 
