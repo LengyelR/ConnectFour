@@ -11,13 +11,14 @@ def mkdir(*folder):
     return path
 
 
-def init_generation_zero():
+def init_generation_zero(folder=''):
     """
     creates the folder structure for gen-0, which contains the untrained, random model
     """
     current_gen = 'gen-0'
-    model_folder_path = mkdir('model', current_gen)
-    tf_folder_path = mkdir('model', current_gen, 'tf')
+    root = os.path.join(folder, 'model')
+    model_folder_path = mkdir(root, current_gen)
+    tf_folder_path = mkdir(root, current_gen, 'tf')
 
     weight_path = os.path.join(model_folder_path, 'weights.h5')
     keras_path = os.path.join(model_folder_path, 'keras_model.h5')
