@@ -78,22 +78,20 @@ def _format_data(training_data):
 def train(data, previous_network_weights):
     xs, ys = _format_data(data)
 
-    creator = network.Con4Zero(network.INPUT_SHAPE)
-    neural = creator()
-    neural.load_weights(previous_network_weights)
-    neural.compile(
+    model = network.Con4Zero(network.INPUT_SHAPE)()
+    model.load_weights(previous_network_weights)
+    model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4, ),
         loss=network.Con4Zero.loss(),
         metrics=[network.Con4Zero.loss()]
     )
 
-    neural.fit(
+    model.fit(
         xs, ys,
-        epochs=2,
-        steps_per_epoch=1000
+        epochs=2
     )
 
-    return neural
+    return model
 
 
 def main(folder, current_gen, new_gen):
