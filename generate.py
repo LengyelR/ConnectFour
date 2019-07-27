@@ -26,11 +26,12 @@ def _update_match(winner, game):
         step.append(z)
 
 
-def self_play(gen, iteration, tau, batches=10, n=100):
+def self_play(gen, iteration, tau, folder='', batches=10, n=100):
     """
     :param gen: folder name of the generation (e.g. gen-4)
     :param iteration: execute this many mcts iterations
     :param tau: mcts parameter, controlling exploration
+    :param folder: root folder (training/generation/guid/data will be created here)
     :param batches: number of batches (each batch contains n games)
     :param n: number of games to play in a batch
     :return:
@@ -39,7 +40,7 @@ def self_play(gen, iteration, tau, batches=10, n=100):
     frozen_model_path = os.path.join('model', gen, 'frozen_model.pb')
 
     guid = uuid.uuid4()
-    folder = os.path.join('training', gen, str(guid))
+    folder = os.path.join(folder, 'training', gen, str(guid))
     os.makedirs(folder)
 
     engine = connect4.GameEngine()
@@ -85,13 +86,13 @@ if __name__ == '__main__':
     parser.add_argument(
         '--batches', '-b',
         type=int,
-        default=5,
+        default=20,
         help='Number of batches. Each batch of games will be saved separately.'
     )
     parser.add_argument(
         '--batch_size', '-n',
         type=int,
-        default=100,
+        default=250,
         help='The size of each batch. This many games will be played in a batch.'
     )
     parser.add_argument(
@@ -99,6 +100,12 @@ if __name__ == '__main__':
         type=str,
         default='gen-0',
         help='Network generation to be used for self-play.'
+    )
+    parser.add_argument(
+        '--folder', '-o',
+        type=str,
+        default='',
+        help='Root folder.'
     )
     parser.add_argument(
         '--iter', '-i',
@@ -109,7 +116,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--tau', '-t',
         type=float,
-        default=0.05,
+        default=1.0,
         help='Temperature parameter for the exponentiated visit counts.'
     )
 
@@ -117,5 +124,6 @@ if __name__ == '__main__':
     self_play(flags.generation,
               flags.iter,
               flags.tau,
+              flags.folder,
               flags.batches,
               flags.batch_size)

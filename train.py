@@ -96,11 +96,13 @@ def train(data, previous_network_weights):
     return neural
 
 
-def main(current_gen, new_gen):
+def main(folder, current_gen, new_gen):
     import utils
 
-    model_folder_path = utils.mkdir('model', new_gen)
-    tf_folder_path = utils.mkdir('model', new_gen, 'tf')
+    root = os.path.join(folder, 'model')
+
+    model_folder_path = utils.mkdir(root, new_gen)
+    tf_folder_path = utils.mkdir(root, new_gen, 'tf')
 
     prev_weights_path = os.path.join('model', current_gen, 'weights.h5')
     weight_path = os.path.join(model_folder_path, 'weights.h5')
@@ -120,6 +122,12 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        '--folder', '-o',
+        type=str,
+        default='',
+        help='Root folder.'
+    )
+    parser.add_argument(
         '--prev_gen', '-pg',
         type=str,
         default='gen-0',
@@ -133,4 +141,4 @@ if __name__ == '__main__':
     )
 
     flags, _ = parser.parse_known_args()
-    main(flags.prev_gen, flags.new_gen)
+    main(flags.folder, flags.prev_gen, flags.new_gen)
