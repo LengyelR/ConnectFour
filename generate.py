@@ -8,12 +8,8 @@ import search
 import connect4
 import inference
 
-formatter = logging.Formatter('%(asctime)s - %(message)s')
-fh = logging.FileHandler('selfplay.log')
-fh.setFormatter(formatter)
-logger = logging.getLogger('selfplay')
-logger.setLevel(logging.DEBUG)
-logger.addHandler(fh)
+
+_logger = logging.getLogger(__name__)
 
 
 def _update_match(winner, game):
@@ -49,7 +45,7 @@ def self_play(gen, iteration, tau, folder='', batches=10, n=100):
 
     for batch_no in range(batches):
         self_play_data = []
-        logger.debug(f'generating: {guid} -> {batch_no}')
+        _logger.debug(f'generating: {guid} -> {batch_no}')
 
         for i in range(n):
             s = engine.empty_board()
@@ -70,9 +66,9 @@ def self_play(gen, iteration, tau, folder='', batches=10, n=100):
             winner = best_node.player if best_node.terminal == 1 else 0
             _update_match(winner, game_steps)
 
-            logger.debug(f'game{i} has been finished. Winner is {winner}')
+            _logger.debug(f'game{i} has been finished. Winner is {winner}')
             self_play_data.extend(game_steps)
-        logger.debug(f'saving: {guid} -> {batch_no}')
+        _logger.debug(f'saving: {guid} -> {batch_no}')
         data_name = f'{batch_no}_{n}_self_play.pkl'
         full_path = os.path.join(folder, data_name)
         with open(full_path, 'wb') as f:
@@ -121,6 +117,14 @@ if __name__ == '__main__':
     )
 
     flags, _ = parser.parse_known_args()
+
+    formatter = logging.Formatter('%(asctime)s - %(message)s')
+    fh = logging.FileHandler(os.path.join(flags.folder, 'selfplay.log'))
+    fh.setFormatter(formatter)
+
+    _logger.setLevel(logging.DEBUG)
+    _logger.addHandler(fh)
+
     self_play(flags.generation,
               flags.iter,
               flags.tau,
