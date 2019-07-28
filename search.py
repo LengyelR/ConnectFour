@@ -119,10 +119,11 @@ class Node:
 
 
 class Mcts:
-    def __init__(self, iter_count, net, game_engine):
+    def __init__(self, iter_count, net, game_engine, name='mcts'):
         self.iter_count = iter_count
         self.net = net
         self.game_engine = game_engine
+        self.name = name
 
     def search(self, board_state, player, tau=1.0):
         # create root (next level starts the game, so root should be the other player)
@@ -145,9 +146,10 @@ class MctsRnd:
     Uses uniform random distribution instead of a neural network.
     This class should be similar to a mcts guided by a gen-0 network, but faster with "pure" exploration.
     """
-    def __init__(self, iter_count, game_engine):
+    def __init__(self, iter_count, game_engine, name='mcts_nonet'):
         self.iter_count = iter_count
         self.game_engine = game_engine
+        self.name = name
 
     def search(self, board_state, player, tau=0.01):
         # create root (next level starts the game, so root should be the other player)
