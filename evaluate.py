@@ -47,9 +47,9 @@ class Evaluator:
         for i in range(n):
             winner, s = self._play(swap)
             stats.append(winner)
-            self.engine.show_board(s)
-            print()
 
+            print()
+            self.engine.show_board(s)
             _logger.debug(f'winner: {winner} (as first player:{not swap})')
         return Counter(stats)
 
@@ -58,10 +58,10 @@ def main(folder, prev_gen, new_gen):
     ev = Evaluator(folder, prev_gen, new_gen)
 
     res1 = ev.compare(100, False)
-    _logger.info(res1, 'as 1st player')
+    _logger.info(f'{res1}  (as 1st player)')
 
     res2 = ev.compare(100, True)
-    _logger.info(res2, 'as 2nd player')
+    _logger.info(f'{res2}  (as 2nd player)')
 
 
 if __name__ == "__main__":
