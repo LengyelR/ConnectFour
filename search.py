@@ -124,7 +124,7 @@ class Mcts:
         self.net = net
         self.game_engine = game_engine
 
-    def search(self, board_state, player, tau=0.01):
+    def search(self, board_state, player, tau=1.0):
         # create root (next level starts the game, so root should be the other player)
         root = Node(0, 0, board_state, 3-player)
         root.depth = np.count_nonzero(board_state)
