@@ -66,6 +66,8 @@ def main(folder, prev_gen, new_gen):
 
 if __name__ == "__main__":
     import argparse
+    import utils
+    utils.try_init_colorama()
 
     parser = argparse.ArgumentParser()
     parser.add_argument(

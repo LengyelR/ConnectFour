@@ -34,3 +34,15 @@ def init_generation_zero(folder=''):
 
 if __name__ == '__main__':
     init_generation_zero()
+
+
+def try_init_colorama():
+    """
+    Enables ANSI Escape codes under MS Windows.
+    (Doesn't change anything on Linux.)
+    """
+    import importlib
+    colorama_spec = importlib.util.find_spec("colorama")
+    if colorama_spec is not None:
+        from colorama import init
+        init()

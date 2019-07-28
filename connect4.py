@@ -200,11 +200,8 @@ def _test():
 
 
 if __name__ == "__main__":
-    import importlib
-    colorama_spec = importlib.util.find_spec("colorama")
-    if colorama_spec is not None:
-        from colorama import init
-        init()
+    import utils
+    utils.try_init_colorama()
 
     _example_games()
     _test()
