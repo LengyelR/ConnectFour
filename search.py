@@ -2,7 +2,6 @@ import math
 import numpy as np
 import network
 import connect4
-import inference
 
 np.set_printoptions(edgeitems=12, linewidth=120)
 C_PUCT = 5
@@ -24,29 +23,17 @@ class Node:
         self.depth = 0
 
     def max_puct_node(self):
-        return max(self.children, key=lambda node: node.Q + node.U if node is not None else 0)
+        return max(self.children, key=lambda node: node.Q + node.U if node.action != -1 else -1)
 
     def get_policy(self, tau):
         """
-        This method modifies the graph! After this call: either retain the selected child node, or create a new tree.
         :param tau: temperature parameter
-        :return: (pi, children)
-                 pi: probability distribution from the exponentiated visit counts,
-                 children: the children nodes
+        :return: probability distribution from the exponentiated visit counts
         """
-        # fairly ugly... fill in the "missing" illegal moves ...
-        legal_moves = set()
-        for node in self.children:
-            legal_moves.add(node.action)
-
-        for move in range(7):
-            if move not in legal_moves:
-                self.children.insert(move, Node(0, -1,  None, -1))
-
         visits = [node.N for node in self.children]
         visits = np.asarray(visits)**(1/tau)
         pi = visits / visits.sum()
-        return pi, self.children
+        return pi
 
     @property
     def U(self):
@@ -70,16 +57,21 @@ class Node:
         if self.terminal is not None:
             return
 
-        # children belongs to the other player
+        # children belong to the other player
         player = 3 - self.player
 
         illegal_mask = engine.illegal_moves_mask(board_state)
         prior_probabilities[0][illegal_mask] = 0
         normed_priors = prior_probabilities[0] / sum(prior_probabilities[0])
+        normed_priors[illegal_mask] = -1
 
         for move, p in enumerate(normed_priors):
             # illegal move
-            if p < 1e-5:
+            if p < 0:
+                illegal_move = Node(0, -1,  None, -1)
+                illegal_move.parent = self
+                illegal_move.depth = self.depth + 1
+                self.children.append(illegal_move)
                 continue
 
             r, c, next_state = engine.move(move, board_state, player)
@@ -100,7 +92,7 @@ class Node:
             self.children.append(child_node)
 
     def backup(self, v):
-        v = v[0][0]  # todo: tf.squeeze
+        v = v[0][0]
         curr = self
         # override v, when it's obvious to avoid or choose this state
         if self.terminal is not None:
@@ -118,106 +110,89 @@ class Node:
         return f'{self.state}, N:{self.N}, W:{self.W:.2f}, P:{self.P:.2f}, depth:{self.depth}'
 
 
-class Mcts:
+class MctsBase:
     def __init__(self, iter_count, net, game_engine, name='mcts'):
         self.iter_count = iter_count
         self.net = net
         self.game_engine = game_engine
         self.name = name
 
-    def search(self, board_state, player, tau=1.0):
-        # create root (next level starts the game, so root should be the other player)
-        root = Node(0, 0, board_state, 3-player)
-        root.depth = np.count_nonzero(board_state)
-
+    def search(self, root, tau=1.0):
         for _ in range(self.iter_count):
             node = root
 
             leaf = node.select()
-            p, v = self.net.predict(network.to_network_feature_planes(leaf.state))
+            p, v = self._predict(network.to_network_feature_planes(leaf.state))
             leaf.expand(self.game_engine, leaf.state, p)
             leaf.backup(v)
 
-        return root.get_policy(tau)
+        pi = root.get_policy(tau)
+        a = np.random.choice(7, p=pi)
+        best_node = root.children[a]
+
+        return pi, best_node
+
+    def _predict(self, s):
+        raise NotImplementedError
 
 
-class MctsRnd:
+class Mcts(MctsBase):
+    def _predict(self, s):
+        return self.net.predict(s)
+
+
+class MctsRnd(MctsBase):
     """
-    Uses uniform random distribution instead of a neural network.
-    This class should be similar to a mcts guided by a gen-0 network, but faster with "pure" exploration.
+    Uses a uniform random distribution instead of a neural network.
+    This class should be similar to a mcts guided by a gen-0 network, with "pure" exploration.
+    (But with lower latency.)
     """
-    def __init__(self, iter_count, game_engine, name='mcts_nonet'):
-        self.iter_count = iter_count
-        self.game_engine = game_engine
-        self.name = name
+    def __init__(self, iter_count, game_engine):
+        super().__init__(iter_count, None, game_engine)
 
-    def search(self, board_state, player, tau=0.01):
-        # create root (next level starts the game, so root should be the other player)
-        root = Node(0, 0, board_state, 3-player)
-        root.depth = np.count_nonzero(board_state)
+    def _predict(self, s):
+        p = np.random.uniform(0, 1, 7)
+        p = p / p.sum()
+        p = np.asarray([p])
 
-        for _ in range(self.iter_count):
-            node = root
-
-            leaf = node.select()
-
-            p = np.random.uniform(0, 1, 7)
-            p = p / p.sum()
-            p = np.asarray([p])
-
-            v = np.random.uniform(-1, 1, (1, 1, 1))
-
-            leaf.expand(self.game_engine, leaf.state, p)
-            leaf.backup(v)
-
-        return root.get_policy(tau)
+        v = np.random.uniform(-1, 1, (1, 1, 1))
+        return p, v[0]
 
 
 def main():
     from collections import Counter
     import datetime
-    import os
+    import time
 
     engine = connect4.GameEngine()
-    model = inference.FrozenModel(os.path.join('model', 'gen-0', 'frozen_model.pb'))
-    mcts = Mcts(800, model, engine)
+    mcts = MctsRnd(800, engine)
+    np.random.seed(0)
 
+    def play(tau, log=True):
+        state = engine.empty_board()
+        root = Node(0, 0, state, 2)
+        while True:
+            pi, best_node = mcts.search(root, tau)
+            if log:
+                print('  '*best_node.action + ' v')
+                engine.show_board(best_node.state)
+                print()
+
+            if best_node.terminal is not None:
+                break
+            root = best_node
+        winner = best_node.player if best_node.terminal == 1 else 0
+        return winner, best_node.state
+
+    start = time.time()
     end_results = []
-
-    def step(s, player, use_mcts=True, log=False):
-        if use_mcts:
-            pi, children = mcts.search(s, player, 0.01)
-            a = np.random.choice(7, p=pi)
-            best_node = children[a]
-            q = best_node.Q
-            r, c, s = engine.move(a, s, player)
-        else:
-            r, c, s, a = engine.do_random_move(s, player)
-            q = None
-        if log:
-            print(f'player{player} -> move:{a}, q:{q}')
-            engine.show_board(s)
-        end_result = engine.has_player_won(r, c, s, player)
-        if end_result is not None:
-            end_results.append(end_result)
-            return end_result, s
-
-        if end_result is None and np.count_nonzero(s) == 42:
-            end_results.append(0)
-            return 0, s
-
-        return None, s
-
-    for i in range(100):
-        state = np.zeros((6, 7)).astype(int)
-        winner = None
-        while winner is None:
-            winner, state = step(state, 1, use_mcts=True, log=True)
-            if winner is None:
-                winner, state = step(state, 2, use_mcts=False, log=False)
-        print(f'{datetime.datetime.now()}: ({i}) game over: {winner}')
+    n = 10
+    for i in range(n):
+        w, s = play(1.0)
+        print(f'{datetime.datetime.now()}: ({i}) game over: {w}')
         print('-'*42)
-
+        end_results.append(w)
+    print(time.time()-start, f'seconds for {n} games.')
     print(Counter(end_results))
 
 

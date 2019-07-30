@@ -1,6 +1,5 @@
 import os
 import logging
-import numpy as np
 from collections import Counter
 
 import connect4
@@ -25,22 +24,34 @@ class Evaluator:
         self.mcts = {1: new, 2: old}
 
     def _play(self, swap):
+        root = {}
+        idx = 2 if swap else 1
         s = self.engine.empty_board()
-        player = 1
-        while True:
-            idx = 3 - player if swap else player
-            pi, children = self.mcts[idx].search(s, player)
 
-            a = np.random.choice(7, p=pi)
-            best_node = children[a]
-            if best_node.terminal is not None:
+        # first 2 moves to populate root dictionary
+        root1 = search.Node(0, 0, s, 2)
+        _, root1 = self.mcts[idx].search(root1)
+        root[idx] = root1
+        idx = 3 - idx
+
+        root2 = search.Node(0, 0, root1.state, 1)
+        root2.depth += 1
+        _, root2 = self.mcts[idx].search(root2)
+        root[idx] = root2
+
+        while True:
+            idx = 3 - idx
+
+            # moving root to next state, based on other player's action
+            previous_action = root[3 - idx].action
+            root[idx] = root[idx].children[previous_action]
+            pi, root[idx] = self.mcts[idx].search(root[idx])
+
+            if root[idx].terminal is not None:
                 break
 
-            s = best_node.state
-            player = 3 - player
-
-        winner = best_node.player if best_node.terminal == 1 else 0
-        return winner, best_node.state
+        winner = root[idx].player if root[idx].terminal == 1 else 0
+        return winner, root[idx].state
 
     def compare(self, n, swap):
         stats = []

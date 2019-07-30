@@ -1,4 +1,3 @@
-import numpy as np
 import os
 import uuid
 import pickle
@@ -39,6 +38,7 @@ def self_play(gen, iteration, tau, folder='', batches=10, n=100):
     folder = os.path.join(folder, 'training', gen, str(guid))
     os.makedirs(folder)
 
+    # here tree and model are shared between players
     engine = connect4.GameEngine()
     model = inference.FrozenModel(frozen_model_path)
     mcts = search.Mcts(iteration, model, engine)
@@ -49,19 +49,17 @@ def self_play(gen, iteration, tau, folder='', batches=10, n=100):
 
         for i in range(n):
             s = engine.empty_board()
-            player = 1
+            root = search.Node(0, 0, s, 2)  # first move is the child node of root, so root belongs to 2nd player
             game_steps = []
+
             while True:
-                pi, children = mcts.search(s, player, tau)
-                a = np.random.choice(7, p=pi)
-                best_node = children[a]
+                pi, best_node = mcts.search(root, tau)
                 game_steps.append([s, pi, best_node.Q, best_node.player])
 
                 if best_node.terminal is not None:
                     break
 
-                s = best_node.state
-                player = 3 - player
+                root = best_node
 
             winner = best_node.player if best_node.terminal == 1 else 0
             _update_match(winner, game_steps)
