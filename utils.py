@@ -32,10 +32,6 @@ def init_generation_zero(folder=''):
     train.save(weight_path, keras_path, tf_path, frozen_path)
 
 
-if __name__ == '__main__':
-    init_generation_zero()
-
-
 def try_init_colorama():
     """
     Enables ANSI Escape codes under MS Windows.
@@ -46,3 +42,7 @@ def try_init_colorama():
     if colorama_spec is not None:
         from colorama import init
         init()
+
+
+if __name__ == '__main__':
+    init_generation_zero()
