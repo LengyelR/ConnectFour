@@ -32,7 +32,7 @@ def self_play(gen, iteration, tau, folder='', batches=10, n=100):
     :return:
     """
 
-    frozen_model_path = os.path.join('model', gen, 'frozen_model.pb')
+    frozen_model_path = os.path.join(folder, 'model', gen, 'frozen_model.pb')
 
     guid = uuid.uuid4()
     folder = os.path.join(folder, 'training', gen, str(guid))
