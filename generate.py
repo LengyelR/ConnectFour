@@ -31,7 +31,7 @@ def main(gen, iteration, tau, folder='', batches=10, n=100):
     for batch_no in range(batches):
         game_ids = []
         for i in range(n):
-            game_id = sp.self_play.remote(gen, iteration, tau)
+            game_id = sp.self_play.remote(tau)
             game_ids.append(game_id)
 
         batch = ray.get(game_ids)
