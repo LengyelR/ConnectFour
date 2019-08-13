@@ -1,14 +1,11 @@
 import os
 import uuid
 import pickle
-import logging
 import ray
 
 import search
 import connect4
 import inference
-
-_logger = logging.getLogger(__name__)
 
 
 def main(gen, iteration, tau, folder='', batches=10, n=100):
@@ -86,6 +83,12 @@ class SelfPlay:
 
 if __name__ == '__main__':
     import argparse
+    import time
+
+    @ray.remote
+    def f():
+        time.sleep(0.01)
+        return ray.services.get_node_ip_address()
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -133,14 +136,8 @@ if __name__ == '__main__':
 
     flags, _ = parser.parse_known_args()
 
-    formatter = logging.Formatter('%(asctime)s - %(message)s')
-    fh = logging.FileHandler(os.path.join(flags.folder, 'selfplay.log'))
-    fh.setFormatter(formatter)
-
-    _logger.setLevel(logging.DEBUG)
-    _logger.addHandler(fh)
-
     ray.init(redis_address=flags.redis_address)
+    print('\nnodes:', set(ray.get([f.remote() for _ in range(1000)])), '\n')
 
     main(flags.generation,
          flags.iter,
