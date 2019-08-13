@@ -173,7 +173,7 @@ if __name__ == '__main__':
 
     ray.init(redis_address=flags.redis_address)
     nodes = set(ray.get([get_node_ip.remote() for _ in range(1000)]))
-    print('\nNodes:', len(nodes), random.sample(nodes, 5))
+    print('\nNodes:', len(nodes), random.sample(nodes, min(5, flags.workers)))
     print('CPU count:', ray.cluster_resources()['CPU'])
     print()
 
