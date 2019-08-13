@@ -1,14 +1,18 @@
 import os
 import uuid
 import pickle
+import logging
+import time
 import ray
 
 import search
 import connect4
 import inference
 
+_logger = logging.getLogger(__name__)
 
-def main(gen, iteration, tau, folder='', batches=10, n=100):
+
+def main(gen, iteration, tau, folder='', batches=10, n=100, num_workers=100):
     """
      :param gen: folder name of the generation (e.g. gen-4)
      :param iteration: execute this many mcts iterations
@@ -16,20 +20,18 @@ def main(gen, iteration, tau, folder='', batches=10, n=100):
      :param folder: root folder (training/generation/guid/data will be created here)
      :param batches: number of batches (each batch contains n games)
      :param n: number of games to play in a batch
+     :param num_workers: number of workers to launch
      :return:
      """
-
     guid = uuid.uuid4()
     training_folder = os.path.join(folder, 'training', gen, str(guid))
     os.makedirs(training_folder)
 
-    sp = SelfPlay.remote(gen, iteration, folder)
+    workers = [SelfPlay.remote(gen, iteration, folder) for _ in range(num_workers)]
 
     for batch_no in range(batches):
-        game_ids = []
-        for i in range(n):
-            game_id = sp.self_play.remote(tau)
-            game_ids.append(game_id)
+        game_ids = start_workers(tau, workers, n)
+        wait(game_ids, 90, 10)
 
         batch = ray.get(game_ids)
         flattened = [step for game in batch for step in game]
@@ -37,6 +39,26 @@ def main(gen, iteration, tau, folder='', batches=10, n=100):
         full_path = os.path.join(training_folder, data_name)
         with open(full_path, 'wb') as f:
             pickle.dump(flattened, f, pickle.HIGHEST_PROTOCOL)
+
+
+def start_workers(tau, workers, num_games):
+    i = 0
+    game_ids = []
+    while True:
+        for worker in workers:
+            if i == num_games:
+                return game_ids
+            game_ids.append(worker.self_play.remote(tau))
+            i += 1
+
+
+def wait(object_ids, seconds, freq):
+    until = time.time() + seconds
+    remaining = 1
+    while time.time() < until and remaining > 0:
+        _, remaining_ids = ray.wait(object_ids, timeout=freq)
+        remaining = len(remaining_ids)
+        _logger.debug('remaining:', remaining)
 
 
 @ray.remote
@@ -83,12 +105,7 @@ class SelfPlay:
 
 if __name__ == '__main__':
     import argparse
-    import time
-
-    @ray.remote
-    def f():
-        time.sleep(0.01)
-        return ray.services.get_node_ip_address()
+    import random
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -133,15 +150,37 @@ if __name__ == '__main__':
         default='127.0.0.1:5000',
         help='Head node\'s redis address'
     )
+    parser.add_argument(
+        '--workers', '-w',
+        type=int,
+        default=4,
+        help='The number of workers.'
+    )
 
     flags, _ = parser.parse_known_args()
 
+    formatter = logging.Formatter('%(asctime)s - %(message)s')
+    fh = logging.FileHandler(os.path.join(flags.folder, 'selfplay.log'))
+    fh.setFormatter(formatter)
+
+    _logger.setLevel(logging.DEBUG)
+    _logger.addHandler(fh)
+
+    @ray.remote
+    def get_node_ip():
+        time.sleep(0.01)
+        return ray.services.get_node_ip_address()
+
     ray.init(redis_address=flags.redis_address)
-    print('\nnodes:', set(ray.get([f.remote() for _ in range(1000)])), '\n')
+    nodes = set(ray.get([get_node_ip.remote() for _ in range(1000)]))
+    print('\nNodes:', len(nodes), random.sample(nodes, 5))
+    print('CPU count:', ray.cluster_resources()['CPU'])
+    print()
 
     main(flags.generation,
          flags.iter,
          flags.tau,
          flags.folder,
          flags.batches,
-         flags.batch_size)
+         flags.batch_size,
+         flags.workers)
