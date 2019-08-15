@@ -156,8 +156,8 @@ if __name__ == '__main__':
     parser.add_argument(
         '--redis_address', '-r',
         type=str,
-        default='127.0.0.1:5000',
-        help='Head node\'s redis address'
+        default=None,
+        help='Head node\'s redis address "host:port". If not set workers will be spawned on the host machine.'
     )
     parser.add_argument(
         '--workers', '-w',
@@ -180,9 +180,13 @@ if __name__ == '__main__':
         time.sleep(0.01)
         return ray.services.get_node_ip_address()
 
-    ray.init(redis_address=flags.redis_address)
+    if flags.redis_address is not None:
+        ray.init(redis_address=flags.redis_address)
+    else:
+        ray.init()
     nodes = set(ray.get([get_node_ip.remote() for _ in range(1000)]))
-    _logger.debug(f'Nodes: {len(nodes)}, {random.sample(nodes, min(5, flags.workers))}')
+    num_machines = len(nodes)
+    _logger.debug(f'Nodes: {num_machines}, {random.sample(nodes, min(5, flags.workers, num_machines))}')
     _logger.debug(f'CPU count: {ray.cluster_resources()["CPU"]}')
 
     main = Process(
