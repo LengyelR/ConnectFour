@@ -63,10 +63,11 @@ class Process:
 
     def _show_progress(self, game_ids, freq):
         i = 0
-
+        games = len(game_ids)
         while i < self.batch_size:
             i += self.num_workers
-            ready_ids, remaining_ids = ray.wait(game_ids, num_returns=i, timeout=freq)
+            num_returns = min(i, games)
+            ready_ids, remaining_ids = ray.wait(game_ids, num_returns=num_returns, timeout=freq)
             _logger.debug(f'remaining {len(remaining_ids)} / {len(game_ids)}')
 
 
@@ -89,7 +90,7 @@ class SelfPlay:
 
         while True:
             pi, best_node = self.mcts.search(root, tau)
-            game_steps.append([s, pi, best_node.Q, best_node.player])
+            game_steps.append([best_node.state, pi, best_node.Q, best_node.player])
 
             if best_node.terminal is not None:
                 break
