@@ -43,13 +43,29 @@ def save(weight_path, keras_model_path, tf_model_path, frozen_path):
     _freeze_graph(tf_model_path, frozen_path, ["policy_head/Softmax", "value_head/Tanh"])
 
 
+def _get_window_size(gen):
+    if gen < 4:
+        return gen
+    elif gen < 35:
+        return gen // 2 + 2
+    else:
+        return 20
+
+
 def load_training_data(folder, generation):
     data = []
-    search_pattern = os.path.join(folder, 'training', generation, '**', '*.pkl')
-    for match in glob.iglob(search_pattern, recursive=True):
-        with open(match, 'rb') as f:
-            batch = pickle.load(f)
-            data.extend(batch)
+
+    _, current_gen_str = generation.split('-')
+    curr_gen = int(current_gen_str)
+    window_size = _get_window_size(curr_gen)
+
+    for i in range(window_size+1):
+        gen_idx = curr_gen - i
+        search_pattern = os.path.join(folder, 'training', 'gen-' + str(gen_idx), '**', '*.pkl')
+        for match in glob.iglob(search_pattern, recursive=True):
+            with open(match, 'rb') as f:
+                batch = pickle.load(f)
+                data.extend(batch)
     return data
 
 
