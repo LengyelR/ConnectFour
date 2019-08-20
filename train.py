@@ -1,9 +1,12 @@
-import tensorflow as tf
-from tensorflow.python.platform import gfile
-import numpy as np
 import glob
 import os
 import pickle
+import random
+
+import tensorflow as tf
+from tensorflow.python.platform import gfile
+import numpy as np
+
 import network
 
 
@@ -62,14 +65,16 @@ def load_training_data(folder, generation):
     for i in range(window_size+1):
         gen_idx = curr_gen - i
         search_pattern = os.path.join(folder, 'training', 'gen-' + str(gen_idx), '**', '*.pkl')
+        print(search_pattern)
         for match in glob.iglob(search_pattern, recursive=True):
             with open(match, 'rb') as f:
                 batch = pickle.load(f)
                 data.extend(batch)
+    print('combined length:', len(data))
     return data
 
 
-def _format_data(training_data):
+def _sample_data(training_data, batch_size, steps):
     x_data = []
 
     pi_arr = []
@@ -86,13 +91,16 @@ def _format_data(training_data):
         pi_arr.append(pi)
         q_arr.append(avg)
 
-    xs = np.asarray(x_data)
-    ys = [pi_arr, q_arr]
+    dataset_size = len(x_data)
+    sample_size = min(batch_size*steps, dataset_size)
+    idx = random.sample(range(dataset_size), sample_size)
+    xs = np.array(x_data)[idx]
+    ys = [np.array(pi_arr)[idx], np.array(q_arr)[idx]]
     return xs, ys
 
 
-def train(data, previous_network_weights):
-    xs, ys = _format_data(data)
+def train(data, previous_network_weights, batch_size, steps):
+    xs, ys = _sample_data(data, batch_size, steps)
 
     model = network.Con4Zero(network.INPUT_SHAPE)()
     model.load_weights(previous_network_weights)
@@ -104,13 +112,14 @@ def train(data, previous_network_weights):
 
     model.fit(
         xs, ys,
-        epochs=2
+        epochs=2,
+        batch_size=batch_size
     )
 
     return model
 
 
-def main(folder, current_gen, new_gen):
+def main(folder, current_gen, new_gen, batch_size, steps):
     import utils
 
     root = os.path.join(folder, 'model')
@@ -125,7 +134,7 @@ def main(folder, current_gen, new_gen):
     tf_path = os.path.join(tf_folder_path, 'connect4')
 
     training_data = load_training_data(folder, current_gen)
-    trained_model = train(training_data, prev_weights_path)
+    trained_model = train(training_data, prev_weights_path, batch_size, steps)
     trained_model.save_weights(weight_path)
 
     save(weight_path, keras_path, tf_path, frozen_path)
@@ -151,8 +160,20 @@ if __name__ == '__main__':
         '--new_gen', '-ng',
         type=str,
         default='gen-1',
-        help='The new, next generation. After the training is finished, the model is saved here.'
+        help='The new, next generation. After the training is finished, the model is saved under this name.'
+    )
+    parser.add_argument(
+        '--batch_size', '-b',
+        type=int,
+        default=512,
+        help='Number of samples per gradient update.'
+    )
+    parser.add_argument(
+        '--steps', '-s',
+        type=int,
+        default=1000,
+        help='Number of steps in an epoch.'
     )
 
     flags, _ = parser.parse_known_args()
-    main(flags.folder, flags.prev_gen, flags.new_gen)
+    main(flags.folder, flags.prev_gen, flags.new_gen, flags.batch_size, flags.steps)
