@@ -3,6 +3,7 @@ import uuid
 import pickle
 import logging
 import time
+import random
 import ray
 
 import search
@@ -113,9 +114,37 @@ class SelfPlay:
             step.append(z)
 
 
+def main(generation, iteration, tau, folder, num_batches, batch_size, num_workers, redis_address):
+
+    @ray.remote
+    def get_node_ip():
+        time.sleep(0.01)
+        return ray.services.get_node_ip_address()
+
+    if redis_address is not None:
+        ray.init(redis_address=redis_address)
+    else:
+        ray.init()
+
+    nodes = set(ray.get([get_node_ip.remote() for _ in range(1000)]))
+    num_machines = len(nodes)
+    _logger.debug(f'Nodes: {num_machines}, {random.sample(nodes, min(5, num_workers, num_machines))}')
+    _logger.debug(f'CPU count: {ray.cluster_resources()["CPU"]}')
+
+    process = Process(
+        generation,
+        iteration,
+        tau,
+        folder,
+        num_batches,
+        batch_size,
+        num_workers)
+    process.start()
+    ray.shutdown()
+
+
 if __name__ == '__main__':
     import argparse
-    import random
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -176,26 +205,11 @@ if __name__ == '__main__':
     _logger.setLevel(logging.DEBUG)
     _logger.addHandler(fh)
 
-    @ray.remote
-    def get_node_ip():
-        time.sleep(0.01)
-        return ray.services.get_node_ip_address()
-
-    if flags.redis_address is not None:
-        ray.init(redis_address=flags.redis_address)
-    else:
-        ray.init()
-    nodes = set(ray.get([get_node_ip.remote() for _ in range(1000)]))
-    num_machines = len(nodes)
-    _logger.debug(f'Nodes: {num_machines}, {random.sample(nodes, min(5, flags.workers, num_machines))}')
-    _logger.debug(f'CPU count: {ray.cluster_resources()["CPU"]}')
-
-    main = Process(
-            flags.generation,
-            flags.iter,
-            flags.tau,
-            flags.folder,
-            flags.batches,
-            flags.batch_size,
-            flags.workers)
-    main.start()
+    main(flags.generation,
+         flags.iter,
+         flags.tau,
+         flags.folder,
+         flags.batches,
+         flags.batch_size,
+         flags.workers,
+         flags.redis_address)
