@@ -150,13 +150,13 @@ if __name__ == '__main__':
     parser.add_argument(
         '--batches', '-b',
         type=int,
-        default=20,
+        default=64,
         help='Number of batches. Each batch of games will be saved separately.'
     )
     parser.add_argument(
         '--batch_size', '-n',
         type=int,
-        default=250,
+        default=112,
         help='The size of each batch. This many games will be played in a batch.'
     )
     parser.add_argument(
