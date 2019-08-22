@@ -171,13 +171,13 @@ if __name__ == '__main__':
     parser.add_argument(
         '--batch_size', '-b',
         type=int,
-        default=512,
+        default=128,
         help='Number of samples per gradient update.'
     )
     parser.add_argument(
-        '--steps', '-s',
+        '--steps', '-n',
         type=int,
-        default=1000,
+        default=4000,
         help='Number of steps in an epoch.'
     )
 
