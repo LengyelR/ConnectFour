@@ -2,6 +2,7 @@ import glob
 import os
 import pickle
 import random
+from collections import defaultdict
 
 import tensorflow as tf
 from tensorflow.python.platform import gfile
@@ -75,6 +76,7 @@ def load_training_data(folder, generation):
 
 
 def _sample_data(training_data, batch_size, steps):
+    dedupe = defaultdict(list)
     x_data = []
 
     pi_arr = []
@@ -87,9 +89,13 @@ def _sample_data(training_data, batch_size, steps):
         z = step_data[3]
         avg = (q + z)/2
 
-        x_data.append(network.to_training_feature_planes(s))
-        pi_arr.append(pi)
-        q_arr.append(avg)
+        dedupe[s.tostring()].append((s, pi, avg))
+
+    for step_data in dedupe.values():
+        length = len(step_data)
+        x_data.append(network.to_training_feature_planes(step_data[0][0]))
+        pi_arr.append(sum(v[1] for v in step_data) / length)
+        q_arr.append(sum(v[2] for v in step_data) / length)
 
     dataset_size = len(x_data)
     sample_size = min(batch_size*steps, dataset_size)
