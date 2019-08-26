@@ -66,6 +66,7 @@ class Evaluator:
 
 
 def main(folder, prev_gen, new_gen):
+    _logger.info(f'{prev_gen}  vs  {new_gen}')
     ev = Evaluator(folder, prev_gen, new_gen)
 
     res1 = ev.compare(100, False)
