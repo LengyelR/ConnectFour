@@ -4,7 +4,7 @@ import network
 import connect4
 
 np.set_printoptions(edgeitems=12, linewidth=120)
-C_PUCT = 5
+C_PUCT = 4
 
 
 class Node:
