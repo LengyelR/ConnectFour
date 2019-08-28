@@ -132,8 +132,10 @@ def to_training_feature_planes(board):
 
 
 if __name__ == "__main__":
-    TRAIN = 500
+    from train import CyclicLearningRate
+    TRAIN = 512000
     TEST = 100
+    BATCH_SIZE = 128
 
     def run_model(m):
         t1 = (1,) + INPUT_SHAPE
@@ -159,17 +161,22 @@ if __name__ == "__main__":
     run_model(neural)
 
     neural.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3, ),
+        optimizer=tf.keras.optimizers.SGD(learning_rate=0.02, momentum=0.8),
         loss=Con4Zero.loss(),
         metrics=[Con4Zero.loss()]
     )
 
     test_shape = (TEST, ) + INPUT_SHAPE
     train_shape = (TRAIN, ) + INPUT_SHAPE
+
+    xs = np.random.randn(*train_shape)
+    ys = create_data(TRAIN)
+    cyclic_lr = CyclicLearningRate(0.02, TRAIN // BATCH_SIZE)
     neural.fit(
-        np.random.randn(*train_shape), create_data(TRAIN),
-        epochs=5,
-        steps_per_epoch=10,
-        validation_data=(np.random.randn(*test_shape), create_data(TEST)),
-        validation_freq=10
+        xs, ys,
+        epochs=2,
+        batch_size=BATCH_SIZE,
+        callbacks=[cyclic_lr]
     )
+
+    run_model(neural)

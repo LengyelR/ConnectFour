@@ -5,46 +5,11 @@ import random
 from collections import defaultdict
 
 import tensorflow as tf
+import tensorflow.keras.backend as K
 from tensorflow.python.platform import gfile
 import numpy as np
 
 import network
-
-
-def _save_keras_model(weight_src, destination):
-    tf.keras.backend.set_learning_phase(0)
-    creator = network.Con4Zero(network.INPUT_SHAPE)
-    neural = creator()
-    neural.load_weights(weight_src)
-    tf.keras.models.save_model(neural, destination, overwrite=True)
-
-
-def _save_keras_model_as_tf(keras_src, destination):
-    tf.keras.backend.set_learning_phase(0)
-    tf.keras.models.load_model(keras_src)
-    saver = tf.train.Saver()
-    sess = tf.keras.backend.get_session()
-    saver.save(sess, destination)
-
-
-def _freeze_graph(tf_model_src, destination, outputs):
-    with tf.Session() as sess:
-        saver = tf.train.import_meta_graph(tf_model_src + ".meta")
-        saver.restore(sess, tf_model_src)
-
-        graph = tf.get_default_graph().as_graph_def()
-        frozen_graph = tf.graph_util.convert_variables_to_constants(sess, graph, output_node_names=outputs)
-
-        with gfile.FastGFile(destination, 'wb') as f:
-            f.write(frozen_graph.SerializeToString())
-
-
-def save(weight_path, keras_model_path, tf_model_path, frozen_path):
-    tf.reset_default_graph()
-
-    _save_keras_model(weight_path, keras_model_path)
-    _save_keras_model_as_tf(keras_model_path, tf_model_path)
-    _freeze_graph(tf_model_path, frozen_path, ["policy_head/Softmax", "value_head/Tanh"])
 
 
 def _get_window_size(gen):
@@ -105,24 +70,105 @@ def _sample_data(training_data, batch_size, steps):
     return xs, ys
 
 
-def train(data, previous_network_weights, batch_size, steps):
-    xs, ys = _sample_data(data, batch_size, steps)
+class CyclicLearningRate(tf.keras.callbacks.Callback):
+    def __init__(self, base_lr, steps):
+        """
+        :param base_lr: overrides the optimizer's learning rate!
+        :param steps: must be equal to the number of training steps!
+        """
+        super().__init__()
+        self.base_lr = base_lr
+        self.steps = steps
 
+    @staticmethod
+    def _draw_line(p0, p1):
+        m = (p1[1] - p0[1]) / (p1[0] - p0[0])
+        return lambda x: m * (x - p0[0]) + p0[1]
+
+    def _increase(self, x):
+        start = (0, self.base_lr)
+        stop = (self.steps*0.45, self.base_lr*10)
+        line = self._draw_line(start, stop)
+        return line(x)
+
+    def _decrease(self, x):
+        start = (self.steps*0.45, self.base_lr*10)
+        stop = (self.steps*0.9, self.base_lr)
+        line = self._draw_line(start, stop)
+        return line(x)
+
+    def _decrease2(self, x):
+        start = (self.steps*0.9, self.base_lr)
+        stop = (self.steps, self.base_lr/200)
+        line = self._draw_line(start, stop)
+        return line(x)
+
+    def on_batch_begin(self, batch, logs=None):
+        if batch < self.steps*0.45:
+            new_lr = self._increase(batch)
+        elif batch < self.steps*0.9:
+            new_lr = self._decrease(batch)
+        else:
+            new_lr = self._decrease2(batch)
+
+        K.set_value(self.model.optimizer.lr, new_lr)
+
+
+def train(data, previous_network_weights, batch_size, steps):
     model = network.Con4Zero(network.INPUT_SHAPE)()
     model.load_weights(previous_network_weights)
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4, ),
+        optimizer=tf.keras.optimizers.SGD(learning_rate=0.02, momentum=0.8),
         loss=network.Con4Zero.loss(),
         metrics=[network.Con4Zero.loss()]
     )
 
+    xs, ys = _sample_data(data, batch_size, steps)
+    cyclic_lr = CyclicLearningRate(0.02, steps)
     model.fit(
         xs, ys,
         epochs=2,
-        batch_size=batch_size
+        batch_size=batch_size,
+        callbacks=[cyclic_lr]
     )
 
     return model
+
+
+def _save_keras_model(weight_src, destination):
+    tf.keras.backend.set_learning_phase(0)
+    creator = network.Con4Zero(network.INPUT_SHAPE)
+    neural = creator()
+    neural.load_weights(weight_src)
+    tf.keras.models.save_model(neural, destination, overwrite=True)
+
+
+def _save_keras_model_as_tf(keras_src, destination):
+    tf.keras.backend.set_learning_phase(0)
+    tf.keras.models.load_model(keras_src)
+    saver = tf.train.Saver()
+    sess = tf.keras.backend.get_session()
+    saver.save(sess, destination)
+
+
+def _freeze_graph(tf_model_src, destination, outputs):
+    with tf.Session() as sess:
+        saver = tf.train.import_meta_graph(tf_model_src + ".meta")
+        saver.restore(sess, tf_model_src)
+
+        graph = tf.get_default_graph().as_graph_def()
+        frozen_graph = tf.graph_util.convert_variables_to_constants(sess, graph, output_node_names=outputs)
+
+        with gfile.FastGFile(destination, 'wb') as f:
+            f.write(frozen_graph.SerializeToString())
+
+
+def save(weight_path, keras_model_path, tf_model_path, frozen_path):
+    tf.reset_default_graph()
+
+    _save_keras_model(weight_path, keras_model_path)
+    _save_keras_model_as_tf(keras_model_path, tf_model_path)
+    _freeze_graph(tf_model_path, frozen_path, ["policy_head/Softmax", "value_head/Tanh"])
 
 
 def main(folder, current_gen, new_gen, batch_size, steps):
