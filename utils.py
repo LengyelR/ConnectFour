@@ -45,4 +45,15 @@ def try_init_colorama():
 
 
 if __name__ == '__main__':
-    init_generation_zero()
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--folder', '-o',
+        type=str,
+        default='',
+        help='Root folder.'
+    )
+
+    flags, _ = parser.parse_known_args()
+    init_generation_zero(flags.folder)
