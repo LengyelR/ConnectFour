@@ -51,7 +51,8 @@ def _sample_data(training_data, batch_size, steps):
         s = step_data[0]
         pi = step_data[1]
         q = step_data[2]
-        z = step_data[3]
+        # player = step_data[3]
+        z = step_data[4]
         avg = (q + z)/2
 
         dedupe[s.tostring()].append((s, pi, avg))

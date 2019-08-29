@@ -105,13 +105,18 @@ class SelfPlay:
 
     @staticmethod
     def _update_match(winner, game):
+        """
+        :param winner: 1, 2 or 0
+        :param game: a list of [state, pi, q, player] list
+        """
         if winner == 0:
-            z = 0
+            for step in game:
+                step.append(0)
         else:
-            z = 1 if winner == 1 else -1
-
-        for step in game:
-            step.append(z)
+            for step in game:
+                current_player = step[3]
+                z = 1 if winner == current_player else -1
+                step.append(z)
 
 
 def main(generation, iteration, tau, folder, num_batches, batch_size, num_workers, redis_address):
@@ -128,8 +133,10 @@ def main(generation, iteration, tau, folder, num_batches, batch_size, num_worker
 
     nodes = set(ray.get([get_node_ip.remote() for _ in range(1000)]))
     num_machines = len(nodes)
+
     _logger.debug(f'Nodes: {num_machines}, {random.sample(nodes, min(5, num_workers, num_machines))}')
     _logger.debug(f'CPU count: {ray.cluster_resources()["CPU"]}')
+    time.sleep(10)
 
     process = Process(
         generation,
