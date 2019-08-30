@@ -57,9 +57,9 @@ class GameCollection:
         return game
 
 
-def load_data(folder, generation):
+def load_data(folder):
     data = []
-    search_pattern = os.path.join(folder, 'training', generation, '**', '*.pkl')
+    search_pattern = os.path.join(folder, '**', '*.pkl')
     for match in glob.iglob(search_pattern, recursive=True):
         with open(match, 'rb') as f:
             batch = pickle.load(f)
@@ -89,7 +89,8 @@ def print_stats(steps, top=5):
 
 
 def main():
-    data = load_data('', 'gen-1')
+    path = os.path.join('training', 'gen-0')
+    data = load_data(path)
     print_stats([Step(step) for step in data], 10)
 
 
