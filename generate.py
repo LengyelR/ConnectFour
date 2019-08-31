@@ -9,6 +9,7 @@ import ray
 import search
 import connect4
 import inference
+import utils
 
 _logger = logging.getLogger(__name__)
 
@@ -119,12 +120,7 @@ def main(generation, iteration, tau, folder, num_batches, batch_size, num_worker
     training_folder = os.path.join(folder, 'training', generation, str(guid))
     os.makedirs(training_folder)
 
-    formatter = logging.Formatter('%(asctime)s - %(message)s')
-    fh = logging.FileHandler(os.path.join(training_folder, 'selfplay.log'))
-    fh.setFormatter(formatter)
-
-    _logger.setLevel(logging.DEBUG)
-    _logger.addHandler(fh)
+    utils.register_logger(_logger, training_folder, 'selfplay.log')
 
     @ray.remote
     def get_node_ip():

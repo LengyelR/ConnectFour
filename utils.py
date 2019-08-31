@@ -1,4 +1,6 @@
 import os
+import sys
+import logging
 import train
 import network
 
@@ -42,6 +44,21 @@ def try_init_colorama():
     if colorama_spec is not None:
         from colorama import init
         init()
+
+
+def register_logger(logger, folder, file_name):
+    logger.propagate = False  # tensorflow would duplicate the logs
+
+    fh = logging.FileHandler(os.path.join(folder, file_name))
+    sh = logging.StreamHandler(sys.stdout)
+
+    formatter = logging.Formatter('%(asctime)s - %(message)s')
+    fh.setFormatter(formatter)
+    sh.setFormatter(formatter)
+
+    logger.addHandler(fh)
+    logger.addHandler(sh)
+    logger.setLevel(logging.DEBUG)
 
 
 if __name__ == '__main__':

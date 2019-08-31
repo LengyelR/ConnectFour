@@ -1,7 +1,8 @@
-import os
 import logging
 import train
 import generate
+import utils
+
 
 _logger = logging.getLogger(__name__)
 
@@ -80,12 +81,7 @@ if __name__ == '__main__':
 
     flags, _ = parser.parse_known_args()
 
-    formatter = logging.Formatter('%(asctime)s - %(message)s')
-    fh = logging.FileHandler(os.path.join(flags.folder, 'pipeline.log'))
-    fh.setFormatter(formatter)
-
-    _logger.setLevel(logging.DEBUG)
-    _logger.addHandler(fh)
+    utils.register_logger(_logger, flags.folder, 'pipeline.log')
 
     main(flags.folder,
          flags.batches,

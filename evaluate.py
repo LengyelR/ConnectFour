@@ -66,14 +66,14 @@ class Evaluator:
 
 
 def main(folder, prev_gen, new_gen):
-    _logger.info(f'{prev_gen}  vs  {new_gen}')
+    _logger.info(f'player1:{new_gen} vs player2:{prev_gen}')
     ev = Evaluator(folder, prev_gen, new_gen)
 
     res1 = ev.compare(100, False)
-    _logger.info(f'{res1}  (as 1st player)')
+    _logger.info(f'{res1}  (as 1st player {new_gen})')
 
     res2 = ev.compare(100, True)
-    _logger.info(f'{res2}  (as 2nd player)')
+    _logger.info(f'{res2}  (as 2nd player {new_gen})')
 
 
 if __name__ == "__main__":
@@ -102,11 +102,7 @@ if __name__ == "__main__":
     )
 
     flags, _ = parser.parse_known_args()
-    formatter = logging.Formatter('%(asctime)s - %(message)s')
-    fh = logging.FileHandler(os.path.join(flags.folder, 'evaluations.log'))
-    fh.setFormatter(formatter)
 
-    _logger.setLevel(logging.DEBUG)
-    _logger.addHandler(fh)
+    utils.register_logger(_logger, flags.folder, 'evaluations.log')
 
     main(flags.folder, flags.prev_gen, flags.new_gen)
