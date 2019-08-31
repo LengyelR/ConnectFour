@@ -28,17 +28,12 @@ class Process:
         self.gen = gen
         self.iteration = iteration
         self.tau = tau
-        self.folder = folder
         self.num_batches = num_batches
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.workers = [SelfPlay.remote(gen, iteration, folder) for _ in range(num_workers)]
 
-    def start(self):
-        guid = uuid.uuid4()
-        training_folder = os.path.join(self.folder, 'training', self.gen, str(guid))
-        os.makedirs(training_folder)
-
+    def start(self, training_folder):
         for batch_no in range(self.num_batches):
             game_ids = self._start_workers()
             self._show_progress(game_ids, 120.0)
@@ -120,6 +115,16 @@ class SelfPlay:
 
 
 def main(generation, iteration, tau, folder, num_batches, batch_size, num_workers, redis_address):
+    guid = uuid.uuid4()
+    training_folder = os.path.join(folder, 'training', generation, str(guid))
+    os.makedirs(training_folder)
+
+    formatter = logging.Formatter('%(asctime)s - %(message)s')
+    fh = logging.FileHandler(os.path.join(training_folder, 'selfplay.log'))
+    fh.setFormatter(formatter)
+
+    _logger.setLevel(logging.DEBUG)
+    _logger.addHandler(fh)
 
     @ray.remote
     def get_node_ip():
@@ -146,7 +151,8 @@ def main(generation, iteration, tau, folder, num_batches, batch_size, num_worker
         num_batches,
         batch_size,
         num_workers)
-    process.start()
+
+    process.start(training_folder)
     ray.shutdown()
 
 
@@ -204,13 +210,6 @@ if __name__ == '__main__':
     )
 
     flags, _ = parser.parse_known_args()
-
-    formatter = logging.Formatter('%(asctime)s - %(message)s')
-    fh = logging.FileHandler(os.path.join(flags.folder, 'selfplay.log'))
-    fh.setFormatter(formatter)
-
-    _logger.setLevel(logging.DEBUG)
-    _logger.addHandler(fh)
 
     main(flags.generation,
          flags.iter,
