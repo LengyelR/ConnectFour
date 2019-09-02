@@ -101,19 +101,18 @@ class Con4Zero:
     def loss():
         """
         p, v = f_theta(s)
-        loss := (z - v)**2 - pi * log(p)
+        loss := (z - v)**2 - pi * log(p/pi)
         where
             p is the returned policy from the network
             v is the estimated outcome from the network
             z is the real outcome
             pi is MCTS outcome ("the improved p")
 
-        :return: MSE + CROSS-ENTROPY
+        :return: MSE + KL-DIV
         """
-
         def _loss(y_true, y_pred):
             mse = tf.keras.losses.mean_squared_error(y_true[1], y_pred[1])
-            ce = tf.keras.losses.categorical_crossentropy(y_true[0], y_pred[0])
+            ce = tf.keras.losses.kullback_leibler_divergence(y_true[0], y_pred[0])
             return mse + ce
 
         return _loss
@@ -146,8 +145,7 @@ if __name__ == "__main__":
 
 
     def create_data(n):
-        pi = np.zeros(7)
-        pi[0] = 1.0
+        pi = np.array([0.1, 0.1, 0.2, 0.3, 0.1, 0.1, 0.1])
         return [np.tile(pi, (n, 1)), np.ones(n)]
 
     creator = Con4Zero(INPUT_SHAPE)
@@ -161,9 +159,8 @@ if __name__ == "__main__":
     run_model(neural)
 
     neural.compile(
-        optimizer=tf.keras.optimizers.SGD(learning_rate=0.02, momentum=0.8),
-        loss=Con4Zero.loss(),
-        metrics=[Con4Zero.loss()]
+        optimizer=tf.keras.optimizers.SGD(),
+        loss=Con4Zero.loss()
     )
 
     test_shape = (TEST, ) + INPUT_SHAPE
@@ -171,7 +168,7 @@ if __name__ == "__main__":
 
     xs = np.random.randn(*train_shape)
     ys = create_data(TRAIN)
-    cyclic_lr = CyclicLearningRate(0.02, TRAIN // BATCH_SIZE)
+    cyclic_lr = CyclicLearningRate(0.025, 0.2, TRAIN // BATCH_SIZE)
     neural.fit(
         xs, ys,
         epochs=2,
