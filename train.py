@@ -72,13 +72,15 @@ def _sample_data(training_data, batch_size, steps):
 
 
 class CyclicLearningRate(tf.keras.callbacks.Callback):
-    def __init__(self, base_lr, steps):
+    def __init__(self, start_lr, peak_lr, steps):
         """
-        :param base_lr: overrides the optimizer's learning rate!
+        :param start_lr: cycle start. Overrides the optimizer's learning rate!
+        :param peak_lr: cycle peak. Overrides the optimizer's learning rate!
         :param steps: must be equal to the number of training steps!
         """
         super().__init__()
-        self.base_lr = base_lr
+        self.start_lr = start_lr
+        self.peak_lr = peak_lr
         self.steps = steps
 
     @staticmethod
@@ -87,20 +89,20 @@ class CyclicLearningRate(tf.keras.callbacks.Callback):
         return lambda x: m * (x - p0[0]) + p0[1]
 
     def _increase(self, x):
-        start = (0, self.base_lr)
-        stop = (self.steps*0.45, self.base_lr*10)
+        start = (0, self.start_lr)
+        stop = (self.steps*0.45, self.peak_lr)
         line = self._draw_line(start, stop)
         return line(x)
 
     def _decrease(self, x):
-        start = (self.steps*0.45, self.base_lr*10)
-        stop = (self.steps*0.9, self.base_lr)
+        start = (self.steps*0.45, self.peak_lr)
+        stop = (self.steps*0.9, self.start_lr)
         line = self._draw_line(start, stop)
         return line(x)
 
-    def _decrease2(self, x):
-        start = (self.steps*0.9, self.base_lr)
-        stop = (self.steps, self.base_lr/200)
+    def _1cycle(self, x):
+        start = (self.steps*0.9, self.start_lr)
+        stop = (self.steps, self.start_lr/200)
         line = self._draw_line(start, stop)
         return line(x)
 
@@ -110,8 +112,8 @@ class CyclicLearningRate(tf.keras.callbacks.Callback):
         elif batch < self.steps*0.9:
             new_lr = self._decrease(batch)
         else:
-            new_lr = self._decrease2(batch)
-
+            new_lr = self._1cycle(batch)
+        print(f' lr: {new_lr:.4f}')
         K.set_value(self.model.optimizer.lr, new_lr)
 
 
@@ -119,9 +121,8 @@ def train(data, previous_network_weights, batch_size, steps):
     model = network.Con4Zero(network.INPUT_SHAPE)()
     model.load_weights(previous_network_weights)
     model.compile(
-        optimizer=tf.keras.optimizers.SGD(learning_rate=0.02, momentum=0.8),
-        loss=network.Con4Zero.loss(),
-        metrics=[network.Con4Zero.loss()]
+        optimizer=tf.keras.optimizers.SGD(),
+        loss=network.Con4Zero.loss()
     )
 
     xs, ys = _sample_data(data, batch_size, steps)
