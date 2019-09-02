@@ -117,7 +117,7 @@ class CyclicLearningRate(tf.keras.callbacks.Callback):
         K.set_value(self.model.optimizer.lr, new_lr)
 
 
-def train(data, previous_network_weights, batch_size, steps):
+def train(data, tf_log_dir, previous_network_weights, batch_size, steps):
     model = network.Con4Zero(network.INPUT_SHAPE)()
     model.load_weights(previous_network_weights)
     model.compile(
@@ -126,12 +126,16 @@ def train(data, previous_network_weights, batch_size, steps):
     )
 
     xs, ys = _sample_data(data, batch_size, steps)
-    cyclic_lr = CyclicLearningRate(0.02, steps)
+    cyclic_lr = CyclicLearningRate(0.002, 0.025, steps)
+    t_board = tf.keras.callbacks.TensorBoard(log_dir=tf_log_dir,
+                                             batch_size=batch_size,
+                                             write_graph=False,
+                                             update_freq='batch')
     model.fit(
         xs, ys,
         epochs=2,
         batch_size=batch_size,
-        callbacks=[cyclic_lr]
+        callbacks=[cyclic_lr, t_board]
     )
 
     return model
@@ -177,6 +181,7 @@ def main(folder, current_gen, new_gen, batch_size, steps):
     import utils
 
     root = os.path.join(folder, 'model')
+    tf_log_dir = os.path.join(folder, 'tf_con4_log')
 
     model_folder_path = utils.mkdir(root, new_gen)
     tf_folder_path = utils.mkdir(root, new_gen, 'tf')
@@ -188,7 +193,7 @@ def main(folder, current_gen, new_gen, batch_size, steps):
     tf_path = os.path.join(tf_folder_path, 'connect4')
 
     training_data = load_training_data(folder, current_gen)
-    trained_model = train(training_data, prev_weights_path, batch_size, steps)
+    trained_model = train(training_data, tf_log_dir, prev_weights_path, batch_size, steps)
     trained_model.save_weights(weight_path)
 
     save(weight_path, keras_path, tf_path, frozen_path)
