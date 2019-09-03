@@ -72,8 +72,8 @@ class ValueHead:
 
 
 class Con4Zero:
-    def __init__(self, input_shape):
-        l2 = tf.keras.regularizers.l2(0.01)
+    def __init__(self, input_shape, l2_reg=1e-4):
+        l2 = tf.keras.regularizers.l2(l2_reg)
 
         self.policy_head = PolicyHead(l2)
         self.value_head = ValueHead(l2)

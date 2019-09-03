@@ -118,7 +118,7 @@ class CyclicLearningRate(tf.keras.callbacks.Callback):
 
 
 def train(data, tf_log_dir, previous_network_weights, batch_size, steps):
-    model = network.Con4Zero(network.INPUT_SHAPE)()
+    model = network.Con4Zero(network.INPUT_SHAPE, 1e-4)()
     model.load_weights(previous_network_weights)
     model.compile(
         optimizer=tf.keras.optimizers.SGD(),
