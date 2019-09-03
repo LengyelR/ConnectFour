@@ -64,8 +64,8 @@ def _sample_data(training_data, batch_size, steps):
         q_arr.append(sum(v[2] for v in step_data) / length)
 
     dataset_size = len(x_data)
-    sample_size = min(batch_size*steps, dataset_size)
-    idx = random.sample(range(dataset_size), sample_size)
+    sample_size = min(batch_size*steps*(1/0.9), dataset_size)
+    idx = random.sample(range(dataset_size), int(sample_size))
     xs = np.array(x_data)[idx]
     ys = [np.array(pi_arr)[idx], np.array(q_arr)[idx]]
     return xs, ys
@@ -129,12 +129,18 @@ def train(data, tf_log_dir, previous_network_weights, batch_size, steps):
     cyclic_lr = CyclicLearningRate(0.002, 0.025, steps)
     t_board = tf.keras.callbacks.TensorBoard(log_dir=tf_log_dir,
                                              batch_size=batch_size,
+                                             update_freq='batch',
                                              write_graph=False,
-                                             update_freq='batch')
+                                             write_grads=True,
+                                             write_images=True,
+                                             histogram_freq=1
+
+                                             )
     model.fit(
         xs, ys,
         epochs=2,
         batch_size=batch_size,
+        validation_split=0.1,
         callbacks=[cyclic_lr, t_board]
     )
 
